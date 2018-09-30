@@ -161,7 +161,12 @@ func (txPrs *txProcess) txProcessStart() {
 		for {
 			select {
 			case <-ticker.C:
-				txPrs.txProcessInfos()
+				_, err := txPrs.rpc.GetConnectionCount()
+				if err != nil {
+					log.Errorf("[%s]TxProcessInfos Error:%s", txPrs.symbol, err)
+				} else {
+					txPrs.txProcessInfos()
+				}
 			case <-txPrs.txProcessStop:
 				log.Infof("[%s]Tx process ticker stop ", txPrs.symbol)
 				return
@@ -172,11 +177,6 @@ func (txPrs *txProcess) txProcessStart() {
 }
 
 func (txPrs *txProcess) txProcessInfos() {
-	_, err := txPrs.rpc.GetConnectionCount()
-	if err != nil {
-		log.Errorf("[%s]TxProcessInfos Error:%s", txPrs.symbol, err)
-		return
-	}
 	txs, err := txPrs.db.TxProcessInfos()
 	if err != nil {
 		log.Errorf("[%s]txProcessList Error:%s", txPrs.symbol, err)
@@ -266,7 +266,7 @@ func panicHelper() {
 
 var (
 	cmdFlag = flag.String("s", "", `send signal to the daemon
-			stop - fast shutdown`)
+	stop - fast shutdown`)
 )
 
 func main() {
