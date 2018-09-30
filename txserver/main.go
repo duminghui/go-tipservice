@@ -46,7 +46,7 @@ func (txPrs *txProcess) stop() {
 }
 
 func (txPrs *txProcess) fileScanStart() {
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(60 * time.Second)
 	txPrs.wg.Add(1)
 	go func(ticker *time.Ticker) {
 		defer func() {
