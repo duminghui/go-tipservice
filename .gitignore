@@ -10,3 +10,20 @@
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+
+txserver/config.json
+txserver/log
+txserver/logs
+txserver/txserver
+txserver/pid
+piebot/config.json
+piebot/log
+piebot/logs
+piebot/piebot
+piebot/pid
+
+txserverv1/config.json
+txserverv1/log
+txserverv1/logs
+txserverv1/txserverv1
+txserverv1/pid

@@ -1,0 +1,30 @@
+{
+    "discord":{
+        "token":"token"
+    },
+    "mongodb":{
+        "hosts":["127.0.0.1:27017"],
+        "database":"database",
+        "username":"username",
+        "password":"password",
+        "sslCrtFile":"sslCrtFile",
+        "timeout":10
+    },
+    "infos":{
+        "info1":{
+            "database":"database",
+            "symbol":"symbol",
+            "rpc": {
+                "name":"name",
+                "host":"host",
+                "user":"user",
+                "pass":"pass",
+                "logJSON":true
+            },
+            "withdraw":{
+                "min":0.1,
+                "txfee":0.001
+            }
+        }
+    }
+}
