@@ -8,8 +8,13 @@ import (
 	"github.com/globalsign/mgo/bson"
 )
 
+type txProcessStatus int
+
 const (
-	colTxProcessInfo = "tx_process_info"
+	colTxProcessInfo        = "tx_process_info"
+	TxProcessStatusWait     = txProcessStatus(-1)
+	TxProcessStatusNoChange = txProcessStatus(0)
+	TxProcessStatusDone     = txProcessStatus(1)
 )
 
 // TxProcessInfo
@@ -17,32 +22,58 @@ const (
 //  -1: wait process
 //  1: process compile
 type TxProcessInfo struct {
-	Symbol      string `bson:"symbol,omitempty"`
-	TxID        string `bson:"txid,omitempty"`
-	Status      int    `bson:"status,omitempty"`
-	ProcessTime int64  `bson:"process_time,omitempty"`
+	Symbol      string          `bson:"symbol,omitempty"`
+	TxID        string          `bson:"txid,omitempty"`
+	Status      txProcessStatus `bson:"status,omitempty"`
+	ProcessTime int64           `bson:"process_time,omitempty"`
 }
 
-func (db *DB) SaveTxProcess(symbol, txid string) error {
-	session := mgoSession.Clone()
-	defer session.Close()
+func (db *DB) IsTxProcessDone(sessionUse *mgo.Session, txID string) (bool, error) {
+	session, closer := session(sessionUse)
+	defer closer()
+	c := session.DB(db.database).C(colTxProcessInfo)
+	// symbol := db.symbol
+	selector := TxProcessInfo{
+		Symbol: db.symbol,
+		TxID:   txID,
+	}
+	result := new(TxProcessInfo)
+	err := c.Find(selector).One(result)
+	if err != nil && err != mgo.ErrNotFound {
+		return false, err
+	}
+	if err != nil && err == mgo.ErrNotFound {
+		return false, nil
+	}
+	if result.Status == TxProcessStatusDone {
+		return true, nil
+	}
+	return false, nil
+}
+
+func (db *DB) UpsertTxProcess(sessionUse *mgo.Session, symbol, txID string, status txProcessStatus, extendSecond int64) error {
+	session, closer := session(sessionUse)
+	defer closer()
 	// symbol := db.symbol
 	selector := TxProcessInfo{
 		Symbol: symbol,
-		TxID:   txid,
+		TxID:   txID,
+	}
+	processTime := int64(0)
+	if extendSecond != 0 {
+		processTime = time.Now().Add(time.Duration(extendSecond) * time.Second).Unix()
 	}
 	data := TxProcessInfo{
 		Symbol:      symbol,
-		TxID:        txid,
-		Status:      -1,
-		ProcessTime: -1,
+		TxID:        txID,
+		Status:      status,
+		ProcessTime: processTime,
 	}
 	_, err := session.DB(db.database).C(colTxProcessInfo).Upsert(selector, data)
 	if err != nil {
-		log.Errorf("[%s]Save Process Error: %s [%s]", symbol, err, txid)
+		log.Errorf("[%s]Upsert Process Error: %s [%s]", symbol, err, txID)
 		return err
 	}
-	// log.Infof("[%s]Save Process Success:[%s] %#v", symbol, txid, changeInfo)
 	return nil
 }
 
@@ -71,29 +102,29 @@ func (db *DB) TxProcessInfos() ([]TxProcessInfo, error) {
 	return txs, nil
 }
 
-func (db *DB) TxProcessUpdate(sessionUse *mgo.Session, txid string, status int, extendSecond int64) error {
-	session, closer := session(sessionUse)
-	defer closer()
-	symbol := db.symbol
-	selector := &TxProcessInfo{
-		Symbol: symbol,
-		TxID:   txid,
-	}
-	processTime := int64(0)
-	if extendSecond != 0 {
-		processTime = time.Now().Add(time.Duration(extendSecond) * time.Second).Unix()
-	}
-	data := &TxProcessInfo{
-		Status:      status,
-		ProcessTime: processTime,
-	}
-	err := session.DB(db.database).C(colTxProcessInfo).Update(selector,
-		bson.M{
-			"$set": data,
-		})
-	if err != nil {
-		log.Errorf("[%s]Update Process Tx Error:%s[%s]", symbol, err, txid)
-		return err
-	}
-	return nil
-}
+// func (db *DB) TxProcessUpdate(sessionUse *mgo.Session, txid string, status txProcessStatus, extendSecond int64) error {
+// 	session, closer := session(sessionUse)
+// 	defer closer()
+// 	symbol := db.symbol
+// 	selector := &TxProcessInfo{
+// 		Symbol: symbol,
+// 		TxID:   txid,
+// 	}
+// 	processTime := int64(0)
+// 	if extendSecond != 0 {
+// 		processTime = time.Now().Add(time.Duration(extendSecond) * time.Second).Unix()
+// 	}
+// 	data := &TxProcessInfo{
+// 		Status:      status,
+// 		ProcessTime: processTime,
+// 	}
+// 	err := session.DB(db.database).C(colTxProcessInfo).Update(selector,
+// 		bson.M{
+// 			"$set": data,
+// 		})
+// 	if err != nil {
+// 		log.Errorf("[%s]Update Process Tx Error:%s[%s]", symbol, err, txid)
+// 		return err
+// 	}
+// 	return nil
+// }

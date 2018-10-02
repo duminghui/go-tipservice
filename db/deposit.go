@@ -14,9 +14,10 @@ func (db *DB) Deposit(address, txid string, amountF float64, isConfirmed bool) e
 	if err != nil {
 		return err
 	}
+	symbol := db.symbol
 	if user == nil {
 		db.saveNoOwnerDeposit(session, txid, address, amountF)
-		db.TxProcessUpdate(session, txid, 1, 0)
+		db.UpsertTxProcess(session, symbol, txid, TxProcessStatusDone, 0)
 		return nil
 	}
 	depositQuery := &Deposit{
@@ -60,9 +61,9 @@ func (db *DB) Deposit(address, txid string, amountF float64, isConfirmed bool) e
 			return err
 		}
 		if !isConfirmed {
-			db.TxProcessUpdate(session, txid, 0, 60)
+			db.UpsertTxProcess(session, symbol, txid, TxProcessStatusNoChange, 60)
 		} else {
-			db.TxProcessUpdate(session, txid, 1, 0)
+			db.UpsertTxProcess(session, symbol, txid, TxProcessStatusDone, 0)
 		}
 		return nil
 	}
@@ -90,12 +91,12 @@ func (db *DB) Deposit(address, txid string, amountF float64, isConfirmed bool) e
 			if err != nil {
 				return err
 			}
-			db.TxProcessUpdate(session, txid, 1, 0)
+			db.UpsertTxProcess(session, symbol, txid, TxProcessStatusDone, 0)
 		} else {
-			db.TxProcessUpdate(session, txid, 0, 60)
+			db.UpsertTxProcess(session, symbol, txid, TxProcessStatusNoChange, 60)
 		}
 	} else {
-		db.TxProcessUpdate(session, txid, 1, 0)
+		db.UpsertTxProcess(session, symbol, txid, TxProcessStatusDone, 0)
 	}
 	// fmt.Println("User", user)
 	return nil

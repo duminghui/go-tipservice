@@ -38,11 +38,16 @@ type Discord struct {
 	SuperManagerID string `json:"supermanagerid"`
 }
 
+type TxServer struct {
+	ListenerAddr string `json:"listenerAddr"`
+}
+
 type Config struct {
-	Discord *Discord             `json:"discord"`
-	Mongodb *umgo.ConnConfig     `json:"mongodb"`
-	Log     *ulog.Config         `json:"log"`
-	Infos   map[string]*CoinInfo `json:"infos"`
+	Discord  *Discord             `json:"discord"`
+	TxServer *TxServer            `json:"txserver"`
+	Mongodb  *umgo.ConnConfig     `json:"mongodb"`
+	Log      *ulog.Config         `json:"log"`
+	Infos    map[string]*CoinInfo `json:"infos"`
 }
 
 func New(file string) (*Config, error) {
