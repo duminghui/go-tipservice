@@ -36,7 +36,7 @@ var cmdSetChannel = "setChannel"
 func reigsterBotCmdHandler() {
 	help := &cmdInfo{
 		name:         "help",
-		usage:        "**help**\n  show pie help",
+		usage:        "**help**\n-- show pie help",
 		channelLimit: true,
 		handler:      cmdPieHelperHandler,
 	}
