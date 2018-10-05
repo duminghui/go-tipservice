@@ -180,6 +180,7 @@ func (p *processPresenter) txProcessDBStart() {
 					continue
 				}
 				if len(txs) == 0 {
+					log.Infof("[%s]TxProcesss Empty...", p.symbol)
 					continue
 				}
 				_, err = p.rpc.GetConnectionCount()
