@@ -110,6 +110,9 @@ func (cfg guildConfigManagerMap) updatePrefix(guildID string, sbl symbolWrap, ne
 	guildCfgMge, ok := cfg[guildID]
 	if !ok {
 		guildCfgMge = cfg.initGuildConfigManager(guildID)
+		guildCoinConfig := new(db.GuildCoinConfig)
+		guildCfgMge.guildCoinConfig[sbl] = guildCoinConfig
+
 	}
 	oldPfx, ok := guildCfgMge.symbolPrefixMap[sbl]
 	if ok {

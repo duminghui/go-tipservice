@@ -218,6 +218,11 @@ func cmdPieSetPrefixHandler(s *discordgo.Session, m *discordgo.MessageCreate, ms
 	}
 	symbol := symbolWrap(msgParts[0])
 	prefix := prefixWrap(msgParts[1])
+	if prefix == "?" {
+		msg := fmt.Sprintf("%s prefix `?` is used by bot", m.Author.Mention())
+		s.ChannelMessageSend(m.ChannelID, msg)
+		return
+	}
 	if !hasSymbol(symbol) {
 		msg := fmt.Sprintf("%s don't have this coin's symbol `%s`", m.Author.Mention(), symbol)
 		s.ChannelMessageSend(m.ChannelID, msg)
@@ -278,7 +283,7 @@ func cmdPieSetHelpHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 	s.ChannelMessageSend(m.ChannelID, msg)
 }
 
-func cmdSetChannelHandler(s *discordgo.Session, m *discordgo.MessageCreate, msgParts *msgParts) {
+func cmdChannelHandler(s *discordgo.Session, m *discordgo.MessageCreate, msgParts *msgParts) {
 	if !isBotManager(s, m) {
 		return
 	}

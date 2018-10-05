@@ -31,7 +31,7 @@ type cmdInfo struct {
 
 var cmdInfoMap = make(map[string]*cmdInfo)
 
-var cmdSetChannel = "setChannel"
+var cmdChannel = "channel"
 
 func reigsterBotCmdHandler() {
 	help := &cmdInfo{
@@ -72,10 +72,10 @@ func reigsterBotCmdHandler() {
 
 	setChannel := &cmdInfo{
 		name:         "setChannel",
-		usage:        "**setChannel <add|remove> <#channel...>**\n--add or remove active channel",
+		usage:        "**channel <add|remove> <#channel...>**\n--add or remove active channel",
 		managerCmd:   true,
 		channelLimit: false,
-		handler:      cmdSetChannelHandler,
+		handler:      cmdChannelHandler,
 	}
 	cmdInfoMap[setChannel.name] = setChannel
 
@@ -488,7 +488,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 	cntParts := strings.Fields(m.Content)
-	if cntParts[0] == "?pieSet" {
+	if cntParts[0] == "?pie" {
 		cmdPieSet(s, m, cntParts[1:])
 		return
 	}
@@ -527,6 +527,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		prefix: prefix,
 		parts:  cntParts[1:],
 	}
+
 	isInChannel := gcm.guildCoinConfig[symbol].InChannels(m.ChannelID)
 	if cmdInfo, ok := cmdInfoMap[cmd]; ok {
 		if cmdInfo.channelLimit && !isInChannel {
