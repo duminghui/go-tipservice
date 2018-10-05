@@ -8,7 +8,7 @@ import (
 
 const (
 	colGuildManager = "guildmanager"
-	dbmain          = "main"
+	dbGuildConfig   = "guild_config"
 )
 
 type GuildManager struct {
@@ -20,7 +20,7 @@ type GuildManager struct {
 func GuildManagerRemove(guildID string, users, roles []string) ([]string, []string, error) {
 	session := mgoSession.Clone()
 	defer session.Close()
-	col := session.DB(dbmain).C(colGuildManager)
+	col := session.DB(dbGuildConfig).C(colGuildManager)
 	selector := bson.M{
 		"guildid": guildID,
 	}
@@ -72,7 +72,7 @@ func GuildManagerRemove(guildID string, users, roles []string) ([]string, []stri
 func GuildManagerAdd(guildID string, users, roles []string) ([]string, []string, error) {
 	session := mgoSession.Clone()
 	defer session.Close()
-	col := session.DB(dbmain).C(colGuildManager)
+	col := session.DB(dbGuildConfig).C(colGuildManager)
 	selector := bson.M{
 		"guildid": guildID,
 	}
@@ -149,7 +149,7 @@ func (gc *GuildManager) InManagerRoles(userRoles []string) bool {
 func GuildManagerList() ([]*GuildManager, error) {
 	session := mgoSession.Clone()
 	defer session.Close()
-	col := session.DB(dbmain).C(colGuildManager)
+	col := session.DB(dbGuildConfig).C(colGuildManager)
 	guildManagers := make([]*GuildManager, 0)
 	err := col.Find(nil).All(&guildManagers)
 	return guildManagers, err
@@ -183,7 +183,7 @@ type GuildCoinConfigChannel struct {
 func GuildChannelRemove(guildID, symbol string, channels []string) ([]string, error) {
 	session := mgoSession.Clone()
 	defer session.Close()
-	col := session.DB(dbmain).C(colGuildCoinConfig)
+	col := session.DB(dbGuildConfig).C(colGuildCoinConfig)
 	selector := &GuildCoinConfig{
 		GuildID: guildID,
 		Symbol:  symbol,
@@ -216,7 +216,7 @@ func GuildChannelRemove(guildID, symbol string, channels []string) ([]string, er
 func GuildChannelAdd(guildID, symbol string, channels []string) ([]string, error) {
 	session := mgoSession.Clone()
 	defer session.Close()
-	col := session.DB(dbmain).C(colGuildCoinConfig)
+	col := session.DB(dbGuildConfig).C(colGuildCoinConfig)
 	selector := &GuildCoinConfig{
 		GuildID: guildID,
 		Symbol:  symbol,
@@ -249,7 +249,7 @@ func GuildChannelAdd(guildID, symbol string, channels []string) ([]string, error
 func GuildConfigList() ([]*GuildCoinConfig, error) {
 	session := mgoSession.Clone()
 	defer session.Close()
-	col := session.DB(dbmain).C(colGuildCoinConfig)
+	col := session.DB(dbGuildConfig).C(colGuildCoinConfig)
 	guildConfigs := make([]*GuildCoinConfig, 0)
 	err := col.Find(nil).All(&guildConfigs)
 	return guildConfigs, err
@@ -258,7 +258,7 @@ func GuildConfigList() ([]*GuildCoinConfig, error) {
 func GuildUpdateCmdPrefix(guildID, symbol, cmdPrefix string) error {
 	session := mgoSession.Clone()
 	defer session.Close()
-	col := session.DB(dbmain).C(colGuildCoinConfig)
+	col := session.DB(dbGuildConfig).C(colGuildCoinConfig)
 	selector := &GuildCoinConfig{
 		GuildID: guildID,
 		Symbol:  symbol,
