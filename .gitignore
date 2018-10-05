@@ -16,11 +16,13 @@ txserver/log
 txserver/logs
 txserver/txserver
 txserver/pid
+txserver/txserver.pid
 piebot/config.json
 piebot/log
 piebot/logs
 piebot/piebot
 piebot/pid
+piebot/piebot.pid
 
 txserverv1/config.json
 txserverv1/log

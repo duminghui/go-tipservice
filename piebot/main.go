@@ -34,7 +34,7 @@ func main() {
 		LogFilePerm: 0640,
 		WorkDir:     allConfig.Env.WorkDir,
 		Umask:       027,
-		Args:        []string{"[txserver]"},
+		// Args:        []string{"[piebot]"},
 	}
 
 	if len(daemon.ActiveFlags()) > 0 {
