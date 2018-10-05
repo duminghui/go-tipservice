@@ -63,11 +63,13 @@ func (db *DB) UpsertTxProcess(sessionUse *mgo.Session, symbol, txID string, stat
 	if extendSecond != 0 {
 		processTime = time.Now().Add(time.Duration(extendSecond) * time.Second).Unix()
 	}
-	data := TxProcessInfo{
-		Symbol:      symbol,
-		TxID:        txID,
-		Status:      status,
-		ProcessTime: processTime,
+	data := bson.M{
+		"$set": &TxProcessInfo{
+			Symbol:      symbol,
+			TxID:        txID,
+			Status:      status,
+			ProcessTime: processTime,
+		},
 	}
 	_, err := session.DB(db.database).C(colTxProcessInfo).Upsert(selector, data)
 	if err != nil {
