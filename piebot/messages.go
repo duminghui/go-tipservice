@@ -510,7 +510,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 	}
 	if prefix == "" {
-		log.Error("can't find match prefix for:", channel.GuildID)
+		// log.Error("can't find match prefix for:", channel.GuildID)
 		return
 	}
 	if strings.Compare(string(prefix), cntParts[0]) == 0 {
