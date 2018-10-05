@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -190,12 +189,12 @@ func (p *processPresenter) txProcessDBStart() {
 					p.txProcessDBInfos()
 				}
 			case <-p.txProcessStop:
-				log.Infof("[%s]Tx process ticker stop ", p.symbol)
+				log.Infof("[%s]Tx process DB stop ", p.symbol)
 				return
 			}
 		}
 	}(ticker)
-	log.Infof("[%s]Tx Process Start", p.symbol)
+	log.Infof("[%s]Tx Process DB Start", p.symbol)
 }
 
 func (p *processPresenter) txProcessDBInfos() {
@@ -222,6 +221,7 @@ var (
 )
 
 func txQueueHandler() {
+	log.Info("Tx Queue Start")
 	for tx := range txQueue {
 		txProcessSum <- struct{}{}
 		go func(tx *txInfo) {
@@ -279,26 +279,16 @@ func txProcessInfo(tx *txInfo) {
 var presenters map[string]*processPresenter
 var allConfig *config.Config
 
-func init() {
-	config, err := config.New("./config.json")
+func initPresenter() {
+	mgoSession, err := umgo.NewSession(allConfig.Mongodb)
 	if err != nil {
-		logrus.Fatalf("Read config file error: %s", err)
-	}
-	allConfig = config
-	logTmp, err := ulog.New(config.Log)
-	if err != nil {
-		logrus.Fatalln("Init Log Error:", err)
-	}
-	log = logTmp
-	mgoSession, err := umgo.NewSession(config.Mongodb)
-	if err != nil {
-		log.Fatalln("Init Mongodb Error:", err)
+		logrus.Fatalln("Init Mongodb Error:", err)
 	}
 	db.SetLog(log)
 	db.SetSession(mgoSession)
 	rpcclient.SetLog(log)
 	presenters = make(map[string]*processPresenter)
-	for k, v := range config.Infos {
+	for k, v := range allConfig.Infos {
 		p := new(processPresenter)
 		p.symbol = k
 		p.db = db.New(v.Symbol, v.Database)
@@ -312,27 +302,33 @@ func init() {
 	}
 }
 
-func panicHelper() {
-	if p := recover(); p != nil {
-		var buf [4096]byte
-		n := runtime.Stack(buf[:], false)
-		log.Fatalf("%s", buf[:n])
+func initConfig() {
+	config, err := config.New(*configFile)
+	if err != nil {
+		logrus.Fatalf("Read config file error: %s", err)
 	}
+	allConfig = config
+	logTmp, err := ulog.NewSingle(config.Log)
+	if err != nil {
+		logrus.Fatalln("Init Log Error:", err)
+	}
+	log = logTmp
 }
 
 var (
-	cmdFlag = flag.String("s", "", `send signal to the daemon
-	stop - fast shutdown`)
+	cmdFlag    = flag.String("s", "", "send signal to the daemon\nstop - fast shutdown")
+	configFile = flag.String("c", "config.json", "config file path")
 )
 
 func main() {
 	flag.Parse()
+	initConfig()
 	daemon.AddCommand(daemon.StringFlag(cmdFlag, "stop"), syscall.SIGTERM, termHandler)
 
 	cntxt := &daemon.Context{
 		PidFileName: "pid",
 		PidFilePerm: 0644,
-		LogFileName: "log",
+		LogFileName: allConfig.Log.LogFile,
 		LogFilePerm: 0640,
 		WorkDir:     "./",
 		Umask:       027,
@@ -342,7 +338,7 @@ func main() {
 	if len(daemon.ActiveFlags()) > 0 {
 		d, err := cntxt.Search()
 		if err != nil {
-			log.Fatalln("Unable send signal to the daemon:", err)
+			logrus.Fatalln("Unable send signal to the daemon:", err)
 		}
 		daemon.SendCommands(d)
 		return
@@ -350,7 +346,7 @@ func main() {
 
 	d, err := cntxt.Reborn()
 	if err != nil {
-		log.Fatalln("Reborn Error:", err)
+		logrus.Fatalln("Reborn Error:", err)
 	}
 	if d != nil {
 		return
@@ -359,6 +355,7 @@ func main() {
 	log.Info("-----------------------")
 	log.Info("daemon started")
 
+	initPresenter()
 	for _, txprs := range presenters {
 		txprs.start()
 	}
@@ -404,7 +401,6 @@ var (
 )
 
 func httpServerStopHelper() {
-	defer panicHelper()
 	<-stopHTTPServer
 	log.Info("Http server start shutdown")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -418,7 +414,6 @@ func httpServerStopHelper() {
 }
 
 func httpHandler(w http.ResponseWriter, r *http.Request) {
-	defer panicHelper()
 	bytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		log.Error("Server Read Body Error", err)

@@ -18,18 +18,19 @@ import (
 )
 
 var (
-	cmdFlag = flag.String("s", "", `send signal to the daemon
-			stop - fast shutdown`)
+	cmdFlag    = flag.String("s", "", "send signal to the daemon\nstop - fast shutdown")
+	configFile = flag.String("c", "config.json", "config file path")
 )
 
 func main() {
 	flag.Parse()
+	initConfigLog()
 	daemon.AddCommand(daemon.StringFlag(cmdFlag, "stop"), syscall.SIGTERM, termHandler)
 
 	cntxt := &daemon.Context{
 		PidFileName: "pid",
 		PidFilePerm: 0644,
-		LogFileName: "log",
+		LogFileName: allConfig.Log.LogFile,
 		LogFilePerm: 0640,
 		WorkDir:     "./",
 		Umask:       027,
@@ -39,7 +40,7 @@ func main() {
 	if len(daemon.ActiveFlags()) > 0 {
 		d, err := cntxt.Search()
 		if err != nil {
-			log.Fatalln("Unable send signal to the daemon:", err)
+			logrus.Fatalln("Unable send signal to the daemon:", err)
 		}
 		daemon.SendCommands(d)
 		return
@@ -47,7 +48,7 @@ func main() {
 
 	d, err := cntxt.Reborn()
 	if err != nil {
-		log.Fatalln("Reborn Error:", err)
+		logrus.Fatalln("Reborn Error:", err)
 	}
 	if d != nil {
 		return
@@ -55,6 +56,8 @@ func main() {
 	defer cntxt.Release()
 	log.Info("-----------------------")
 	log.Info("daemon started")
+
+	initPresenter()
 
 	go terminateHelper()
 
@@ -144,25 +147,15 @@ type coinPresenter struct {
 
 var coinPresenters = make(map[symbolWrap]*coinPresenter)
 
-func init() {
-	appconfig, err := config.New("./config.json")
-	if err != nil {
-		logrus.Fatalf("Read config file error: %s", err)
-	}
-	logTmp, err := ulog.New(appconfig.Log)
-	if err != nil {
-		logrus.Fatalln("Init Log Error:", err)
-	}
-	log = logTmp
-	allConfig = appconfig
-	mgoSession, err := umgo.NewSession(appconfig.Mongodb)
+func initPresenter() {
+	mgoSession, err := umgo.NewSession(allConfig.Mongodb)
 	if err != nil {
 		log.Fatalln("Init Mongodb Error:", err)
 	}
 	db.SetLog(log)
 	db.SetSession(mgoSession)
 	rpcclient.SetLog(log)
-	for k, v := range appconfig.Infos {
+	for k, v := range allConfig.Infos {
 		sblWrap := symbolWrap(k)
 		presenter := new(coinPresenter)
 		presenter.db = db.New(v.Symbol, v.Database)
@@ -171,4 +164,17 @@ func init() {
 		coinPresenters[sblWrap] = presenter
 	}
 	initGuildConfig()
+}
+
+func initConfigLog() {
+	appconfig, err := config.New(*configFile)
+	if err != nil {
+		logrus.Fatalf("Read config file error: %s", err)
+	}
+	logTmp, err := ulog.NewSingle(appconfig.Log)
+	if err != nil {
+		logrus.Fatalln("Init Log Error:", err)
+	}
+	log = logTmp
+	allConfig = appconfig
 }
