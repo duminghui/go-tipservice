@@ -41,6 +41,7 @@ func cmdPieSetInfoHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if !ok {
 		msg := fmt.Sprintf("%s no config for this server", m.Author.Mention())
 		s.ChannelMessageSend(m.ChannelID, msg)
+		return
 	}
 	buf := new(bytes.Buffer)
 	buf.WriteString(m.Author.Mention())
