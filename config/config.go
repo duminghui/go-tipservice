@@ -42,11 +42,17 @@ type TxServer struct {
 	ListenerAddr string `json:"listenerAddr"`
 }
 
+type Env struct {
+	WorkDir string       `json:"wordDir"`
+	PidFile string       `json:"pidFile"`
+	Log     *ulog.Config `json:"log"`
+}
+
 type Config struct {
 	Discord  *Discord             `json:"discord"`
 	TxServer *TxServer            `json:"txserver"`
 	Mongodb  *umgo.ConnConfig     `json:"mongodb"`
-	Log      *ulog.Config         `json:"log"`
+	Env      *Env                 `json:"env"`
 	Infos    map[string]*CoinInfo `json:"infos"`
 }
 

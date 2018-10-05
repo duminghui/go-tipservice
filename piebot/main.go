@@ -28,13 +28,13 @@ func main() {
 	daemon.AddCommand(daemon.StringFlag(cmdFlag, "stop"), syscall.SIGTERM, termHandler)
 
 	cntxt := &daemon.Context{
-		PidFileName: "pid",
+		PidFileName: allConfig.Env.PidFile,
 		PidFilePerm: 0644,
-		LogFileName: allConfig.Log.LogFile,
+		LogFileName: allConfig.Env.Log.LogFile,
 		LogFilePerm: 0640,
-		WorkDir:     "./",
+		WorkDir:     allConfig.Env.WorkDir,
 		Umask:       027,
-		Args:        []string{"[piebot]"},
+		Args:        []string{"[txserver]"},
 	}
 
 	if len(daemon.ActiveFlags()) > 0 {
@@ -171,7 +171,7 @@ func initConfigLog() {
 	if err != nil {
 		logrus.Fatalf("Read config file error: %s", err)
 	}
-	logTmp, err := ulog.NewSingle(appconfig.Log)
+	logTmp, err := ulog.NewSingle(appconfig.Env.Log)
 	if err != nil {
 		logrus.Fatalln("Init Log Error:", err)
 	}

@@ -308,7 +308,7 @@ func initConfig() {
 		logrus.Fatalf("Read config file error: %s", err)
 	}
 	allConfig = config
-	logTmp, err := ulog.NewSingle(config.Log)
+	logTmp, err := ulog.NewSingle(config.Env.Log)
 	if err != nil {
 		logrus.Fatalln("Init Log Error:", err)
 	}
@@ -326,11 +326,11 @@ func main() {
 	daemon.AddCommand(daemon.StringFlag(cmdFlag, "stop"), syscall.SIGTERM, termHandler)
 
 	cntxt := &daemon.Context{
-		PidFileName: "pid",
+		PidFileName: allConfig.Env.PidFile,
 		PidFilePerm: 0644,
-		LogFileName: allConfig.Log.LogFile,
+		LogFileName: allConfig.Env.Log.LogFile,
 		LogFilePerm: 0640,
-		WorkDir:     "./",
+		WorkDir:     allConfig.Env.WorkDir,
 		Umask:       027,
 		Args:        []string{"[txserver]"},
 	}
