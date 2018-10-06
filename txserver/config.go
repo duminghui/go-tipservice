@@ -39,6 +39,7 @@ func readConfig(file string) error {
 	}
 
 	coinInfosFile := serverConfig.CoinInfosFile
+	log.Infof("Coin Infos Config File:%s", dbConfigFile)
 	_, err = config.FromFile(coinInfosFile, &coinInfos)
 	if err != nil {
 		return fmt.Errorf("CoinInfosConfig:%s[%s]", err, coinInfosFile)
