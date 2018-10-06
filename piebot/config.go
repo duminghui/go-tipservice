@@ -28,19 +28,25 @@ var dbConfig *umgo.ConnConfig
 var coinInfos map[string]*config.CoinInfo
 
 func readConfig(file string) error {
+	log.Infof("PieBot Config File:%s", file)
 	piebotConfig = new(PieBotConfig)
 	_, err := config.FromFile(file, piebotConfig)
 	if err != nil {
 		return fmt.Errorf("PieBotConfig:%s", err)
 	}
+
+	dbConfigFile := piebotConfig.DBConfigFile
+	log.Infof("DB Config File:%s", dbConfigFile)
 	dbConfig = new(umgo.ConnConfig)
-	_, err = config.FromFile(piebotConfig.DBConfigFile, dbConfig)
+	_, err = config.FromFile(dbConfigFile, dbConfig)
 	if err != nil {
-		return fmt.Errorf("DBConfig:%s", err)
+		return fmt.Errorf("DBConfig:%s[%s]", err, dbConfigFile)
 	}
-	_, err = config.FromFile(piebotConfig.CoinInfosFile, &coinInfos)
+
+	coinInfosFile := piebotConfig.CoinInfosFile
+	_, err = config.FromFile(coinInfosFile, &coinInfos)
 	if err != nil {
-		return fmt.Errorf("CoinInfosConfig:%s", err)
+		return fmt.Errorf("CoinInfosConfig:%s[%s]", err, coinInfosFile)
 	}
 	return nil
 }

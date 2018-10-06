@@ -23,19 +23,25 @@ var dbConfig *umgo.ConnConfig
 var coinInfos map[string]*config.CoinInfo
 
 func readConfig(file string) error {
+	log.Infof("Server Config File:%s", file)
 	serverConfig = new(ServerConfig)
 	_, err := config.FromFile(file, serverConfig)
 	if err != nil {
 		return fmt.Errorf("ServerConfig:%s[%s]", err, file)
 	}
+
+	dbConfigFile := serverConfig.DBConfigFile
+	log.Infof("DB Config File:%s", dbConfigFile)
 	dbConfig = new(umgo.ConnConfig)
-	_, err = config.FromFile(serverConfig.DBConfigFile, dbConfig)
+	_, err = config.FromFile(dbConfigFile, dbConfig)
 	if err != nil {
-		return fmt.Errorf("DBConfig:%s[%s]", err, serverConfig.DBConfigFile)
+		return fmt.Errorf("DBConfig:%s[%s]", err, dbConfigFile)
 	}
-	_, err = config.FromFile(serverConfig.CoinInfosFile, &coinInfos)
+
+	coinInfosFile := serverConfig.CoinInfosFile
+	_, err = config.FromFile(coinInfosFile, &coinInfos)
 	if err != nil {
-		return fmt.Errorf("CoinInfosConfig:%s[%s]", err, serverConfig.CoinInfosFile)
+		return fmt.Errorf("CoinInfosConfig:%s[%s]", err, coinInfosFile)
 	}
 	return nil
 }
