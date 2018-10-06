@@ -488,6 +488,9 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 	cntParts := strings.Fields(m.Content)
+	if len(cntParts) == 0 {
+		return
+	}
 	if cntParts[0] == "?pie" {
 		cmdPieSet(s, m, cntParts[1:])
 		return
