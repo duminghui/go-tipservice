@@ -72,7 +72,7 @@ func reigsterBotCmdHandler() {
 
 	setChannel := &cmdInfo{
 		name:         "channel",
-		usage:        "**channel <add|remove> <#channel...>**\n--add or remove active channel",
+		usage:        "**channel <add|remove> <#channel...>**\n--add or remove active channel for `%s`",
 		managerCmd:   true,
 		channelLimit: false,
 		handler:      cmdChannelHandler,

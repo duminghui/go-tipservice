@@ -290,7 +290,18 @@ func cmdChannelHandler(s *discordgo.Session, m *discordgo.MessageCreate, msgPart
 	cmdPrefix := msgParts.prefix
 	userMention := m.Author.Mention()
 	channelID := m.ChannelID
-	msg := fmt.Sprintf("%s %ssetChannel command usage:\n**%ssetChannel <add|remove> [#channel,...]**", userMention, cmdPrefix, cmdPrefix)
+	channel, err := channel(s, channelID)
+	if err != nil {
+		log.Error("cmdSetChannelHandler Error:", err)
+		return
+	}
+	symbol, err := guildConfigManagers.symbolByPrefix(channel.GuildID, cmdPrefix)
+	if err != nil {
+		log.Error("cmdSetChannelHandler Error:", err)
+		return
+	}
+	usage := fmt.Sprintf(msgParts.cmdInfo.usage, symbol)
+	msg := fmt.Sprintf("%s %s%s command usage:\n%s", userMention, cmdPrefix, msgParts.cmdInfo.name, usage)
 	parts := msgParts.parts
 	if len(parts) < 2 {
 		s.ChannelMessageSend(channelID, msg)
@@ -307,16 +318,6 @@ func cmdChannelHandler(s *discordgo.Session, m *discordgo.MessageCreate, msgPart
 	channels := make([]string, 0, len(result))
 	for _, v := range result {
 		channels = append(channels, v[1])
-	}
-	channel, err := channel(s, channelID)
-	if err != nil {
-		log.Error("cmdSetChannelHandler Error:", err)
-		return
-	}
-	symbol, err := guildConfigManagers.symbolByPrefix(channel.GuildID, cmdPrefix)
-	if err != nil {
-		log.Error("cmdSetChannelHandler Error:", err)
-		return
 	}
 	var finalChannels []string
 	if operator == "add" {
