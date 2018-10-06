@@ -128,8 +128,8 @@ func cmdPieSetManagerHandler(s *discordgo.Session, m *discordgo.MessageCreate, m
 		return
 	}
 	buf := new(bytes.Buffer)
-	buf.WriteString(msg)
-	buf.WriteString("now server manager:")
+	buf.WriteString(m.Author.Mention())
+	buf.WriteString(" now server manager:")
 	buf.WriteString("\n**Manager**\n")
 	buf.WriteString("  **User:**")
 	if len(updateUsers) > 0 {
