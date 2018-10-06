@@ -26,16 +26,16 @@ func readConfig(file string) error {
 	serverConfig = new(ServerConfig)
 	_, err := config.FromFile(file, serverConfig)
 	if err != nil {
-		return fmt.Errorf("ServerConfig:%s", err)
+		return fmt.Errorf("ServerConfig:%s[%s]", err, file)
 	}
 	dbConfig = new(umgo.ConnConfig)
 	_, err = config.FromFile(serverConfig.DBConfigFile, dbConfig)
 	if err != nil {
-		return fmt.Errorf("DBConfig:%s", err)
+		return fmt.Errorf("DBConfig:%s[%s]", err, serverConfig.DBConfigFile)
 	}
 	_, err = config.FromFile(serverConfig.CoinInfosFile, &coinInfos)
 	if err != nil {
-		return fmt.Errorf("CoinInfosConfig:%s", err)
+		return fmt.Errorf("CoinInfosConfig:%s[%s]", err, serverConfig.CoinInfosFile)
 	}
 	return nil
 }
