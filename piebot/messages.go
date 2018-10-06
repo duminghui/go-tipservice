@@ -71,7 +71,7 @@ func reigsterBotCmdHandler() {
 	cmdInfoMap[withdraw.name] = withdraw
 
 	setChannel := &cmdInfo{
-		name:         "setChannel",
+		name:         "channel",
 		usage:        "**channel <add|remove> <#channel...>**\n--add or remove active channel",
 		managerCmd:   true,
 		channelLimit: false,
@@ -253,13 +253,6 @@ func cmdDepositHandler(s *discordgo.Session, m *discordgo.MessageCreate, parts *
 func cmdPieHelperHandler(s *discordgo.Session, m *discordgo.MessageCreate, parts *msgParts) {
 	cmdPrefix := parts.prefix
 	cmdNames := make([]string, 0, len(cmdInfoMap))
-	for k := range cmdInfoMap {
-		cmdNames = append(cmdNames, k)
-	}
-	sort.Strings(cmdNames)
-	buf := new(bytes.Buffer)
-	buf.WriteString(m.Author.Mention())
-	buf.WriteString(" you can use these commands:\n")
 	channelID := m.ChannelID
 	channel, err := channel(s, channelID)
 	if err != nil {
@@ -271,6 +264,13 @@ func cmdPieHelperHandler(s *discordgo.Session, m *discordgo.MessageCreate, parts
 		log.Error("cmdBal Error:", err)
 		return
 	}
+	for k := range cmdInfoMap {
+		cmdNames = append(cmdNames, k)
+	}
+	sort.Strings(cmdNames)
+	buf := new(bytes.Buffer)
+	msg := fmt.Sprintf("%s you can use these commands with prefix `%s` for `%s`\n", m.Author.Mention(), cmdPrefix, symbol)
+	buf.WriteString(msg)
 	presenter := coinPresenters[symbol]
 	coinConfig := presenter.coin
 	isManager := isBotManager(s, m)
