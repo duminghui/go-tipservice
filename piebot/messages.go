@@ -290,6 +290,9 @@ func cmdPieHelperHandler(s *discordgo.Session, m *discordgo.MessageCreate, parts
 			txFeePercent := coinConfig.Withdraw.TxFeePercent
 			cmdUsage := fmt.Sprintf(usage, withdrawMinAmount, symbol, txFeePercent*100, minTxFee, symbol)
 			buf.WriteString(cmdUsage)
+		} else if k == "channel" {
+			cmdUsage := fmt.Sprintf(usage, symbol)
+			buf.WriteString(cmdUsage)
 		} else {
 			buf.WriteString(usage)
 		}
