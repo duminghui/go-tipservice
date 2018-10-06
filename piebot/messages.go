@@ -91,7 +91,7 @@ func cmdWithdrawHandler(s *discordgo.Session, m *discordgo.MessageCreate, parts 
 		log.Error("cmdWithdraw Error:", err)
 		return
 	}
-	symbol, err := guildConfigManagers.symbolByPrefix(channel.GuildID, cmdPrefix)
+	symbol, err := guildConfigPresenters.symbolByPrefix(channel.GuildID, cmdPrefix)
 	if err != nil {
 		log.Error("cmdWithdraw Error:", err)
 		return
@@ -186,7 +186,7 @@ func cmdBalHandler(s *discordgo.Session, m *discordgo.MessageCreate, parts *msgP
 		log.Error("cmdBal Error:", err)
 		return
 	}
-	symbol, err := guildConfigManagers.symbolByPrefix(channel.GuildID, cmdPrefix)
+	symbol, err := guildConfigPresenters.symbolByPrefix(channel.GuildID, cmdPrefix)
 	if err != nil {
 		log.Error("cmdBal Error:", err)
 		return
@@ -219,7 +219,7 @@ func cmdDepositHandler(s *discordgo.Session, m *discordgo.MessageCreate, parts *
 		log.Error("cmdBal Error:", err)
 		return
 	}
-	symbol, err := guildConfigManagers.symbolByPrefix(channel.GuildID, cmdPrefix)
+	symbol, err := guildConfigPresenters.symbolByPrefix(channel.GuildID, cmdPrefix)
 	if err != nil {
 		log.Error("cmdBal Error:", err)
 		return
@@ -259,7 +259,7 @@ func cmdPieHelperHandler(s *discordgo.Session, m *discordgo.MessageCreate, parts
 		log.Error("cmdBal Error:", err)
 		return
 	}
-	symbol, err := guildConfigManagers.symbolByPrefix(channel.GuildID, cmdPrefix)
+	symbol, err := guildConfigPresenters.symbolByPrefix(channel.GuildID, cmdPrefix)
 	if err != nil {
 		log.Error("cmdBal Error:", err)
 		return
@@ -373,7 +373,7 @@ func cmdPieHandler(s *discordgo.Session, m *discordgo.MessageCreate, parts *msgP
 		log.Error("cmdBal Error:", err)
 		return
 	}
-	symbol, err := guildConfigManagers.symbolByPrefix(channel.GuildID, cmdPrefix)
+	symbol, err := guildConfigPresenters.symbolByPrefix(channel.GuildID, cmdPrefix)
 	if err != nil {
 		log.Error("cmdBal Error:", err)
 		return
@@ -503,7 +503,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		log.Error("messageCreateHandler Error:", err)
 		return
 	}
-	prefixList := guildConfigManagers.prefixList(channel.GuildID)
+	prefixList := guildConfigPresenters.prefixList(channel.GuildID)
 	if len(prefixList) == 0 {
 		log.Error("Prefix List is Empty:", channel.GuildID)
 		return
@@ -522,12 +522,12 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if strings.Compare(string(prefix), cntParts[0]) == 0 {
 		return
 	}
-	gcm, ok := guildConfigManagers[channel.GuildID]
+	gcm, ok := guildConfigPresenters[channel.GuildID]
 	if !ok {
 		log.Error("No Guild Config for", channel.GuildID)
 		return
 	}
-	symbol, err := guildConfigManagers.symbolByPrefix(channel.GuildID, prefix)
+	symbol, err := guildConfigPresenters.symbolByPrefix(channel.GuildID, prefix)
 	cmd := strings.Replace(cntParts[0], string(prefix), "", 1)
 	msgParts := &msgParts{
 		prefix: prefix,

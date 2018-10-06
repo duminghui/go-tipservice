@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/duminghui/go-tipservice/db"
 )
 
 func cmdPieSet(s *discordgo.Session, m *discordgo.MessageCreate, msgParts []string) {
@@ -37,7 +36,7 @@ func cmdPieSetInfoHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 		log.Error("cmdPieSetInfoHander Error:", err)
 		return
 	}
-	gcm, ok := guildConfigManagers[channel.GuildID]
+	gcm, ok := guildConfigPresenters[channel.GuildID]
 	if !ok {
 		msg := fmt.Sprintf("%s no config for this server", m.Author.Mention())
 		s.ChannelMessageSend(m.ChannelID, msg)
@@ -54,7 +53,7 @@ func cmdPieSetInfoHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 			buf.WriteString("**\n  **Prefix: **")
 			buf.WriteString(string(v))
 			buf.WriteString("\n  **Active channels: **")
-			coinConfig, err := guildConfigManagers.coinConfig(channel.GuildID, k)
+			coinConfig, err := guildConfigPresenters.guildCoinConfigBySymbol(channel.GuildID, k)
 			if err != nil {
 				log.Info("cmdPieSetInfoHandler Error:", err)
 				buf.WriteString("\n")
@@ -123,52 +122,36 @@ func cmdPieSetManagerHandler(s *discordgo.Session, m *discordgo.MessageCreate, m
 	for _, user := range m.Mentions {
 		users = append(users, user.ID)
 	}
-	var updateUsers, updateRoles []string
-	if operator == "add" {
-		msg = fmt.Sprintf("%s Add Success. ", m.Author.Mention())
-		updateUsers, updateRoles, err = db.GuildManagerAdd(channel.GuildID, users, m.MentionRoles)
-	} else {
-		msg = fmt.Sprintf("%s Remove Success ", m.Author.Mention())
-		updateUsers, updateRoles, err = db.GuildManagerRemove(channel.GuildID, users, m.MentionRoles)
-	}
+	updateUsers, updateRoles, err := guildConfigPresenters.guildManagerUpdate(channel.GuildID, operator, users, m.MentionRoles)
 	if err != nil {
 		log.Error("cmdPieSetManagerHandler Error:", err)
 		return
 	}
-	guildConfigManagers.guildManagerUpdate(channel.GuildID, updateUsers, updateRoles)
 	buf := new(bytes.Buffer)
 	buf.WriteString(msg)
 	buf.WriteString("now server manager:")
 	buf.WriteString("\n**Manager**\n")
-	gcm, ok := guildConfigManagers[channel.GuildID]
-	if !ok {
-		msg := fmt.Sprintf("%s no config for this server", m.Author.Mention())
-		s.ChannelMessageSend(m.ChannelID, msg)
+	buf.WriteString("  **User:**")
+	if len(updateUsers) > 0 {
+		buf.WriteString("\n    - ")
 	}
-	guildManager := gcm.guildManager
-	if guildManager != nil {
-		buf.WriteString("  **User:**")
-		if len(guildManager.Managers) > 0 {
-			buf.WriteString("\n    - ")
-		}
-		managers := make([]string, 0, len(guildManager.Managers))
-		for _, manager := range guildManager.Managers {
-			member, _ := s.State.Member(channel.GuildID, manager)
-			managers = append(managers, member.User.Username)
-		}
-		buf.WriteString(strings.Join(managers, ", "))
+	managers := make([]string, 0, len(updateUsers))
+	for _, manager := range updateUsers {
+		member, _ := s.State.Member(channel.GuildID, manager)
+		managers = append(managers, member.User.Username)
+	}
+	buf.WriteString(strings.Join(managers, ", "))
 
-		buf.WriteString("\n  **Role:**")
-		if len(guildManager.ManagerRoles) > 0 {
-			buf.WriteString("\n    - ")
-		}
-		roles := make([]string, 0, len(guildManager.ManagerRoles))
-		for _, roleID := range guildManager.ManagerRoles {
-			role, _ := s.State.Role(channel.GuildID, roleID)
-			roles = append(roles, role.Name)
-		}
-		buf.WriteString(strings.Join(roles, ", "))
+	buf.WriteString("\n  **Role:**")
+	if len(updateRoles) > 0 {
+		buf.WriteString("\n    - ")
 	}
+	roles := make([]string, 0, len(updateRoles))
+	for _, roleID := range updateRoles {
+		role, _ := s.State.Role(channel.GuildID, roleID)
+		roles = append(roles, role.Name)
+	}
+	buf.WriteString(strings.Join(roles, ", "))
 	s.ChannelMessageSend(m.ChannelID, buf.String())
 
 }
@@ -191,7 +174,7 @@ func isBotManager(s *discordgo.Session, m *discordgo.MessageCreate) bool {
 	if userID == guild.OwnerID {
 		return true
 	}
-	guildConfigMge, ok := guildConfigManagers[guild.ID]
+	guildConfigMge, ok := guildConfigPresenters[guild.ID]
 	if !ok {
 		return false
 	}
@@ -234,20 +217,15 @@ func cmdPieSetPrefixHandler(s *discordgo.Session, m *discordgo.MessageCreate, ms
 		log.Errorf("cmdPieSetPrefix error:%s", err)
 		return
 	}
-	symbolTmp, _ := guildConfigManagers.symbolByPrefix(channel.GuildID, prefix)
+	symbolTmp, _ := guildConfigPresenters.symbolByPrefix(channel.GuildID, prefix)
 
 	if symbolTmp != "" {
 		msg := fmt.Sprintf("%s command prefix `%s` is config to `%s`", m.Author.Mention(), prefix, symbolTmp)
 		s.ChannelMessageSend(m.ChannelID, msg)
 		return
 	}
-	err = db.GuildUpdateCmdPrefix(channel.GuildID, string(symbol), string(prefix))
-	if err != nil {
-		log.Errorf("cmdPieSetPrefix DB error:%s", err)
-		return
-	}
 
-	err = guildConfigManagers.updatePrefix(channel.GuildID, symbol, prefix)
+	err = guildConfigPresenters.updatePrefix(channel.GuildID, symbol, prefix)
 	if err != nil {
 		log.Errorf("cmdPieSetPrefix Cache error:%s", err)
 		return
@@ -295,7 +273,7 @@ func cmdChannelHandler(s *discordgo.Session, m *discordgo.MessageCreate, msgPart
 		log.Error("cmdSetChannelHandler Error:", err)
 		return
 	}
-	symbol, err := guildConfigManagers.symbolByPrefix(channel.GuildID, cmdPrefix)
+	symbol, err := guildConfigPresenters.symbolByPrefix(channel.GuildID, cmdPrefix)
 	if err != nil {
 		log.Error("cmdSetChannelHandler Error:", err)
 		return
@@ -319,31 +297,22 @@ func cmdChannelHandler(s *discordgo.Session, m *discordgo.MessageCreate, msgPart
 	for _, v := range result {
 		channels = append(channels, v[1])
 	}
-	var finalChannels []string
-	if operator == "add" {
-		msg = fmt.Sprintf("%s Add Success. ", userMention)
-		finalChannels, err = db.GuildChannelAdd(channel.GuildID, string(symbol), channels)
-	} else {
-		msg = fmt.Sprintf("%s Remove Success. ", userMention)
-		finalChannels, err = db.GuildChannelRemove(channel.GuildID, string(symbol), channels)
-	}
+	finalChannels, err := guildConfigPresenters.guildChannelUpdate(channel.GuildID, symbol, operator, channels)
 	if err != nil {
 		log.Error("cmdSetChannelHandler Error:", err)
 		return
 	}
-	guildConfigManagers.guildChannelUpdate(channel.GuildID, symbol, finalChannels)
-	gcm, ok := guildConfigManagers[channel.GuildID]
-	if !ok {
-		msg := fmt.Sprintf("%s no config for this server", userMention)
-		s.ChannelMessageSend(m.ChannelID, msg)
+	if operator == "add" {
+		msg = fmt.Sprintf("%s Add Success.\n", userMention)
+	} else {
+		msg = fmt.Sprintf("%s Remove Success.\n", userMention)
 	}
 	buf := new(bytes.Buffer)
 	buf.WriteString(msg)
-	finalChannels = gcm.guildCoinConfig[symbol].ChannelIDs
 	if len(finalChannels) == 0 {
 		buf.WriteString(fmt.Sprintf(" `%s`'s commands now active all channels", symbol))
 	} else {
-		buf.WriteString(fmt.Sprintf(" `%s`' commands only now active in these channel:\n", symbol))
+		buf.WriteString(fmt.Sprintf(" `%s`' commands  now active in these channel:\n", symbol))
 		for _, channelID := range finalChannels {
 			buf.WriteString(fmt.Sprintf("<#%s>", channelID))
 		}
