@@ -175,7 +175,7 @@ func cmdPieSetManagerHandler(s *discordgo.Session, m *discordgo.MessageCreate, m
 
 func isBotManager(s *discordgo.Session, m *discordgo.MessageCreate) bool {
 	userID := m.Author.ID
-	if userID == allConfig.Discord.SuperManagerID {
+	if userID == piebotConfig.Discord.SuperManagerID {
 		return true
 	}
 	channel, err := channel(s, m.ChannelID)

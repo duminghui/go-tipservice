@@ -6,8 +6,6 @@ import (
 	"io/ioutil"
 
 	rpcclient "github.com/duminghui/go-rpcclient"
-	"github.com/duminghui/go-util/ulog"
-	"github.com/duminghui/go-util/umgo"
 )
 
 type Withdraw struct {
@@ -33,38 +31,15 @@ type CoinInfo struct {
 	Pie                      *Pie                  `json:"pie"`
 }
 
-type Discord struct {
-	Token          string `json:"token"`
-	SuperManagerID string `json:"supermanagerid"`
-}
-
-type TxServer struct {
-	ListenerAddr string `json:"listenerAddr"`
-}
-
-type Env struct {
-	WorkDir string       `json:"wordDir"`
-	PidFile string       `json:"pidFile"`
-	Log     *ulog.Config `json:"log"`
-}
-
-type Config struct {
-	Discord  *Discord             `json:"discord"`
-	TxServer *TxServer            `json:"txserver"`
-	Mongodb  *umgo.ConnConfig     `json:"mongodb"`
-	Env      *Env                 `json:"env"`
-	Infos    map[string]*CoinInfo `json:"infos"`
-}
-
-func New(file string) (*Config, error) {
+func FromFile(file string, v interface{}) (interface{}, error) {
 	configBytes, err := ioutil.ReadFile(file)
 	if err != nil {
 		return nil, err
 	}
-	var config Config
-	err = json.Unmarshal(configBytes, &config)
+	err = json.Unmarshal(configBytes, v)
 	if err != nil {
 		return nil, err
 	}
-	return &config, nil
+	return v, nil
+
 }

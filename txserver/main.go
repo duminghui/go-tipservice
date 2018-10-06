@@ -17,7 +17,6 @@ import (
 	"time"
 
 	rpcclient "github.com/duminghui/go-rpcclient"
-	"github.com/duminghui/go-tipservice/config"
 	"github.com/duminghui/go-tipservice/db"
 	"github.com/duminghui/go-util/ulog"
 	"github.com/duminghui/go-util/umgo"
@@ -278,10 +277,9 @@ func txProcessInfo(tx *txInfo) {
 }
 
 var presenters map[string]*processPresenter
-var allConfig *config.Config
 
 func initPresenter() {
-	mgoSession, err := umgo.NewSession(allConfig.Mongodb)
+	mgoSession, err := umgo.NewSession(dbConfig)
 	if err != nil {
 		logrus.Fatalln("Init Mongodb Error:", err)
 	}
@@ -289,7 +287,7 @@ func initPresenter() {
 	db.SetSession(mgoSession)
 	rpcclient.SetLog(log)
 	presenters = make(map[string]*processPresenter)
-	for k, v := range allConfig.Infos {
+	for k, v := range coinInfos {
 		p := new(processPresenter)
 		p.symbol = k
 		p.db = db.New(v.Symbol, v.Database)
@@ -304,12 +302,11 @@ func initPresenter() {
 }
 
 func initConfig() {
-	config, err := config.New(*configFile)
+	err := readConfig(*configFile)
 	if err != nil {
 		logrus.Fatalf("Read config file error: %s", err)
 	}
-	allConfig = config
-	logTmp, err := ulog.NewSingle(config.Env.Log)
+	logTmp, err := ulog.NewSingle(serverConfig.Log)
 	if err != nil {
 		logrus.Fatalln("Init Log Error:", err)
 	}
@@ -327,11 +324,11 @@ func main() {
 	daemon.AddCommand(daemon.StringFlag(cmdFlag, "stop"), syscall.SIGTERM, termHandler)
 
 	cntxt := &daemon.Context{
-		PidFileName: allConfig.Env.PidFile,
+		PidFileName: serverConfig.PidFile,
 		PidFilePerm: 0644,
-		LogFileName: allConfig.Env.Log.LogFile,
+		LogFileName: serverConfig.Log.LogFile,
 		LogFilePerm: 0640,
-		WorkDir:     allConfig.Env.WorkDir,
+		WorkDir:     serverConfig.WorkDir,
 		Umask:       027,
 		// Args:        []string{"[txserver]"},
 	}
@@ -379,12 +376,12 @@ func httpServerStart() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/wallet", httpHandler)
 	httpServer = &http.Server{
-		Addr:         allConfig.TxServer.ListenerAddr,
+		Addr:         serverConfig.ListenerAddr,
 		WriteTimeout: time.Second * 3,
 		Handler:      mux,
 	}
 
-	log.Infof("Starting Http Server:%s", allConfig.TxServer.ListenerAddr)
+	log.Infof("Starting Http Server:%s", serverConfig.ListenerAddr)
 	err := httpServer.ListenAndServe()
 	if err != nil {
 		if err == http.ErrServerClosed {

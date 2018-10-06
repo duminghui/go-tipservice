@@ -28,11 +28,11 @@ func main() {
 	daemon.AddCommand(daemon.StringFlag(cmdFlag, "stop"), syscall.SIGTERM, termHandler)
 
 	cntxt := &daemon.Context{
-		PidFileName: allConfig.Env.PidFile,
+		PidFileName: piebotConfig.PidFile,
 		PidFilePerm: 0644,
-		LogFileName: allConfig.Env.Log.LogFile,
+		LogFileName: piebotConfig.Log.LogFile,
 		LogFilePerm: 0640,
-		WorkDir:     allConfig.Env.WorkDir,
+		WorkDir:     piebotConfig.WorkDir,
 		Umask:       027,
 		// Args:        []string{"[piebot]"},
 	}
@@ -61,7 +61,7 @@ func main() {
 
 	go terminateHelper()
 
-	discordSession, err = discordgo.New("Bot " + allConfig.Discord.Token)
+	discordSession, err = discordgo.New("Bot " + piebotConfig.Discord.Token)
 	if err != nil {
 		log.Fatalf("Createing Discrod Session Error: %s", err)
 	}
@@ -137,7 +137,6 @@ func termHandler(sig os.Signal) error {
 }
 
 var log = logrus.New()
-var allConfig *config.Config
 
 type coinPresenter struct {
 	db   *db.DB
@@ -148,14 +147,14 @@ type coinPresenter struct {
 var coinPresenters = make(map[symbolWrap]*coinPresenter)
 
 func initPresenter() {
-	mgoSession, err := umgo.NewSession(allConfig.Mongodb)
+	mgoSession, err := umgo.NewSession(dbConfig)
 	if err != nil {
 		log.Fatalln("Init Mongodb Error:", err)
 	}
 	db.SetLog(log)
 	db.SetSession(mgoSession)
 	rpcclient.SetLog(log)
-	for k, v := range allConfig.Infos {
+	for k, v := range coinInfos {
 		sblWrap := symbolWrap(k)
 		presenter := new(coinPresenter)
 		presenter.db = db.New(v.Symbol, v.Database)
@@ -167,14 +166,13 @@ func initPresenter() {
 }
 
 func initConfigLog() {
-	appconfig, err := config.New(*configFile)
+	err := readConfig(*configFile)
 	if err != nil {
 		logrus.Fatalf("Read config file error: %s", err)
 	}
-	logTmp, err := ulog.NewSingle(appconfig.Env.Log)
+	logTmp, err := ulog.NewSingle(piebotConfig.Log)
 	if err != nil {
 		logrus.Fatalln("Init Log Error:", err)
 	}
 	log = logTmp
-	allConfig = appconfig
 }
