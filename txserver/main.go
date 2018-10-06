@@ -315,7 +315,7 @@ func initConfig() {
 
 var (
 	cmdFlag    = flag.String("s", "", "send signal to the daemon\nstop - fast shutdown")
-	configFile = flag.String("c", "config.json", "config file path")
+	configFile = flag.String("c", "", "config file path")
 )
 
 func main() {
