@@ -1,0 +1,11 @@
+
+{
+    "listenerAddr":"127.0.0.1:8085",
+    "workDir":"./",
+    "pidFile":"txserver.pid",
+    "log":{
+        "logFile":"logs/log"
+    },
+    "dbConfigFile":"../db.json",
+    "coinInfosFile":"../coins.json"
+}

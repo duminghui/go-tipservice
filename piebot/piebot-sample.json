@@ -1,0 +1,13 @@
+{
+    "discord":{
+        "token":"",
+        "supermanagerid":""
+    },
+    "workDir":"./",
+    "pidFile":"piebot.pid",
+    "log":{
+        "logFile":"logs/log"
+    },
+    "dbConfigFile":"../db.json",
+    "coinInfosFile":"../coins.json",
+}

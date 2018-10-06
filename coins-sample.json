@@ -1,0 +1,26 @@
+{
+    "btc":{
+        "name":"Bitcoin",
+        "symbol":"BTC",
+        "database":"btc",
+        "txexplorer":"",
+        "minConfirmations4Deposit":6,
+        "scanTxDir":"",
+        "rpc": {
+            "name":"btc",
+            "host":"",
+            "user":"",
+            "pass":"",
+            "logJSON":true
+        },
+        "withdraw":{
+            "min":0.01,
+            "txfee":0.001,
+            "txfeepercent":0.001
+        },
+        "pie":{
+            "min":0.001,
+            "eachminreceive":0.001
+        }
+    }
+}
