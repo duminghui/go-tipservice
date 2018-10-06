@@ -35,12 +35,11 @@ func (gm *GuildManager) ManagerRemove(users, roles []string) error {
 	managers := make([]string, 0)
 	if len(manager.Managers) != 0 {
 		managerMap := make(map[string]int)
-		for _, existUser := range manager.Managers {
-			for _, user := range users {
-				if existUser != user {
-					managerMap[existUser]++
-				}
-			}
+		for _, exitUser := range manager.Managers {
+			managerMap[exitUser] = 1
+		}
+		for _, user := range users {
+			delete(managerMap, user)
 		}
 		for k := range managerMap {
 			managers = append(managers, k)
