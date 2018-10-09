@@ -7,7 +7,7 @@
 {{if .IsShowUsageHint}}{{template "usage" . }}{{end -}}
 ***{{.Prefix}}pie [@receiver...] <amount>***
   pie {{.Symbol}} to receivers
-  minimun amount:{{.PieMin}} {{.Symbol}}
+  minimum amount:{{.PieMin}} {{.Symbol}}
 {{- end}}
 
 {{define "balUsage" -}}
@@ -23,8 +23,8 @@
 {{define "withdrawUsage" -}}
 {{if .IsShowUsageHint}}{{template "usage" . }}{{end -}}
 ***{{.Prefix}}withdraw <address> <amount>***
-  minimun amount:{{.WithdrawMin}} {{.Symbol}}
-  txfee:{{printf "%g%%" .TxFeePercent}} of <amount> or minimun {{.TxFeeMin}} {{.Symbol}}
+  minimum amount:{{.WithdrawMin}} {{.Symbol}}
+  txfee:{{printf "%g%%" .TxFeePercent}} of <amount> or minimum {{.TxFeeMin}} {{.Symbol}}
 {{- end}}
 
 {{define "channelUsage" -}}
