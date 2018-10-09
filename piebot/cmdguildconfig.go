@@ -185,9 +185,9 @@ func (p *guildConfigPresenter) cmdPieMainPrefixHandler(parts *msgParts) {
 }
 
 func (p *guildConfigPresenter) cmdPieManListHandler(parts *msgParts) {
-	symbols := make([]symbolWrap, len(coinPresenters))
+	symbols := make([]string, 0, len(coinPresenters))
 	for k := range coinPresenters {
-		symbols = append(symbols, k)
+		symbols = append(symbols, string(k))
 	}
 	msg := msgFromTmpl("pieMainListInfo", tmplValueMap{
 		"UserMention": parts.m.Author.Mention(),

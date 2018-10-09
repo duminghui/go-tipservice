@@ -113,6 +113,6 @@ Unconfirmed amount: {{.UnconfirmedAmount}} {{.Symbol}}```
 {{- end}}
 
 {{define "pieMainListInfo" -}}
-{{.UserMention}} All configureable coin's symbol:
-{{range .Symbols}} -- **{{.}}** {{end}}
-{{- end}}
+{{.UserMention}} configureable coin's symbol:
+-- {{join .Symbols ", "}}
+{{end}}
