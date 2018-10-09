@@ -9,5 +9,5 @@
         "logFile":"logs/log"
     },
     "dbConfigFile":"../db.json",
-    "coinInfosFile":"../coins.json",
+    "coinInfosFile":"../coins.json"
 }

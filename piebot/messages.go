@@ -2,10 +2,7 @@
 package main
 
 import (
-	"bytes"
-	"fmt"
 	"math"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -13,17 +10,27 @@ import (
 	"github.com/duminghui/go-tipservice/amount"
 )
 
-type cmdHandler func(*discordgo.Session, *discordgo.MessageCreate, *msgParts)
+type cmdHandler func(*guildConfigPresenter, *msgParts)
+
+// type cmdHandler func(*discordgo.Session, *discordgo.MessageCreate, *msgParts)
 
 type msgParts struct {
-	prefix  prefixWrap
-	cmdInfo *cmdInfo
-	parts   []string
+	s         *discordgo.Session
+	m         *discordgo.MessageCreate
+	isManager bool
+	channel   *discordgo.Channel
+	guild     *discordgo.Guild
+	prefix    prefixWrap
+	symbol    symbolWrap
+	contents  []string
+}
+
+func (p *msgParts) channelMessageSend(msg string) {
+	p.s.ChannelMessageSend(p.channel.ID, msg)
 }
 
 type cmdInfo struct {
 	name         string
-	usage        string
 	managerCmd   bool
 	channelLimit bool
 	handler      cmdHandler
@@ -36,106 +43,117 @@ var cmdChannel = "channel"
 func reigsterBotCmdHandler() {
 	help := &cmdInfo{
 		name:         "help",
-		usage:        "**help**\n-- show pie help",
 		channelLimit: true,
-		handler:      cmdPieHelperHandler,
+		handler:      (*guildConfigPresenter).cmdPieHelperHandler,
 	}
 	cmdInfoMap[help.name] = help
 	pie := &cmdInfo{
 		name:         "pie",
-		usage:        "**pie [@receiver...] <amount>**\n-- minimum amount:%s %s",
 		channelLimit: true,
-		handler:      cmdPieHandler,
+		handler:      (*guildConfigPresenter).cmdPieHandler,
 	}
 	cmdInfoMap[pie.name] = pie
 	deposit := &cmdInfo{
 		name:         "deposit",
-		usage:        "**deposit**\n-- get deposit address",
 		channelLimit: true,
-		handler:      cmdDepositHandler,
+		handler:      (*guildConfigPresenter).cmdDepositHandler,
 	}
 	cmdInfoMap[deposit.name] = deposit
 	bal := &cmdInfo{
 		name:         "bal",
-		usage:        "**bal**\n-- get balance amount",
 		channelLimit: true,
-		handler:      cmdBalHandler,
+		handler:      (*guildConfigPresenter).cmdBalHandler,
 	}
 	cmdInfoMap[bal.name] = bal
 	withdraw := &cmdInfo{
 		name:         "withdraw",
-		usage:        "**withdraw <address> <amount>**\n--minimum amount:%.8f %s\n--txfee:%g%% or %.8f %s",
 		channelLimit: true,
-		handler:      cmdWithdrawHandler,
+		handler:      (*guildConfigPresenter).cmdWithdrawHandler,
 	}
 	cmdInfoMap[withdraw.name] = withdraw
 
 	setChannel := &cmdInfo{
 		name:         "channel",
-		usage:        "**channel <add|remove> <#channel...>**\n--add or remove active channel for `%s`",
 		managerCmd:   true,
 		channelLimit: false,
-		handler:      cmdChannelHandler,
+		handler:      (*guildConfigPresenter).cmdChannelHandler,
 	}
 	cmdInfoMap[setChannel.name] = setChannel
 
 }
 
-func cmdWithdrawHandler(s *discordgo.Session, m *discordgo.MessageCreate, parts *msgParts) {
+func (p *guildConfigPresenter) cmdWithdrawHandler(parts *msgParts) {
 	cmdPrefix := parts.prefix
-	userID := m.Author.ID
-	userMention := m.Author.Mention()
-	channelID := m.ChannelID
-	channel, err := channel(s, channelID)
-	if err != nil {
-		log.Error("cmdWithdraw Error:", err)
-		return
-	}
-	symbol, err := guildConfigPresenters.symbolByPrefix(channel.GuildID, cmdPrefix)
-	if err != nil {
-		log.Error("cmdWithdraw Error:", err)
-		return
-	}
+	userID := parts.m.Author.ID
+	userMention := parts.m.Author.Mention()
+	symbol := parts.symbol
 	presenter, ok := coinPresenters[symbol]
 	if !ok {
 		return
 	}
-	withdrawMinAmount := presenter.coin.Withdraw.Min
-	minTxFee := presenter.coin.Withdraw.TxFee
-	txFeePercent := presenter.coin.Withdraw.TxFeePercent
-	cmdUsage := fmt.Sprintf(parts.cmdInfo.usage, withdrawMinAmount, symbol, txFeePercent*100, minTxFee, symbol)
-	cmdPartErrMsg := fmt.Sprintf("%s withdraw command usage:\n%s", userMention, cmdUsage)
-	if len(parts.parts) != 2 {
-		s.ChannelMessageSend(channelID, cmdPartErrMsg)
+	withdrawMinAmount, _ := amount.FromFloat64(presenter.coin.Withdraw.Min)
+	minTxFee, _ := amount.FromFloat64(presenter.coin.Withdraw.TxFee)
+	txFeePercent := presenter.coin.Withdraw.TxFeePercent * 100
+	withdrawUsageInfo := &cmdWithdrawUserInfo{
+		cmdUsageInfo: cmdUsageInfo{
+			tmplName:        "withdrawUsage",
+			IsShowUsageHint: true,
+			CmdName:         "withdraw",
+			UserMention:     userMention,
+			Prefix:          string(cmdPrefix),
+			Symbol:          string(symbol),
+		},
+		WithdrawMin:  withdrawMinAmount,
+		TxFeePercent: txFeePercent,
+		TxFeeMin:     minTxFee,
+	}
+	cmdPartErrMsg := withdrawUsageInfo.String()
+	if len(parts.contents) != 2 {
+		parts.channelMessageSend(cmdPartErrMsg)
 		return
 	}
 
-	withdrawAmount, err := strconv.ParseFloat(parts.parts[1], 64)
+	withdrawAmount, err := strconv.ParseFloat(parts.contents[1], 64)
 	if err != nil {
-		s.ChannelMessageSend(channelID, cmdPartErrMsg)
+		parts.channelMessageSend(cmdPartErrMsg)
 		return
 	}
 
-	if withdrawAmount < withdrawMinAmount {
-		msg := fmt.Sprintf("%s withdraw minimum amount is `%.8f %s`", userMention, withdrawMinAmount, symbol)
-		s.ChannelMessageSend(channelID, msg)
+	if withdrawAmount < withdrawMinAmount.Float64() {
+		msg := msgFromTmpl("withdrawMinAmountErr", tmplValueMap{
+			"UserMention": userMention,
+			"Min":         withdrawMinAmount,
+			"Symbol":      symbol,
+		})
+		parts.channelMessageSend(msg)
 		return
 	}
 
-	address := parts.parts[0]
+	address := parts.contents[0]
 	validateAddress, err := presenter.rpc.ValidateAddress(address)
 	if err != nil {
 		log.Error("[CMD]withdraw ValidateAddress Error:", err)
+		msg := msgFromTmpl("walletMaintenance", userMention)
+		parts.channelMessageSend(msg)
 		return
 	}
 	if !validateAddress.IsValid {
-		msg := fmt.Sprintf("%s `%s` is not %s address", userMention, address, symbol)
-		s.ChannelMessageSend(channelID, msg)
+		msg := msgFromTmpl("withdrawValidateAddrErr", tmplValueMap{
+			"UserMention": userMention,
+			"Addr":        address,
+			"Symbol":      symbol,
+		})
+		parts.channelMessageSend(msg)
 		return
 	}
 	if validateAddress.IsMine {
-		msg := fmt.Sprintf("%s `%s` is in bot's wallet, you can use `%spie` command to give some one %s", userMention, address, cmdPrefix, symbol)
-		s.ChannelMessageSend(channelID, msg)
+		msg := msgFromTmpl("withdrawBotAddrErr", tmplValueMap{
+			"UserMention": userMention,
+			"Addr":        address,
+			"Prefix":      cmdPrefix,
+			"Symbol":      symbol,
+		})
+		parts.channelMessageSend(msg)
 		return
 	}
 	pieer, err := presenter.db.UserByID(nil, userID)
@@ -144,53 +162,55 @@ func cmdWithdrawHandler(s *discordgo.Session, m *discordgo.MessageCreate, parts 
 		return
 	}
 	userAmount := amount.Zero
-	userImmatureAmount := amount.Zero
+	userUnconfirmedAmount := amount.Zero
 	if pieer != nil {
 		userAmount = pieer.Amount
-		userImmatureAmount = pieer.UnconfirmedAmount
+		userUnconfirmedAmount = pieer.UnconfirmedAmount
 	}
 	if userAmount.CmpFloat(withdrawAmount) == -1 {
-		msg := fmt.Sprintf("%s your don't have enough amount to winthdraw\n ```Balance amount:%s %s\nUnconfirmed amount:%s %s```", userMention, userAmount, symbol, userImmatureAmount, symbol)
-		s.ChannelMessageSend(channelID, msg)
+		msg := msgFromTmpl("withdrawAmountNotEnoughErr", tmplValueMap{
+			"UserMention":       userMention,
+			"Amount":            userAmount,
+			"UnconfirmedAmount": userUnconfirmedAmount,
+			"Symbol":            symbol,
+		})
+		parts.channelMessageSend(msg)
 		return
 	}
-	txfee := withdrawAmount * txFeePercent
-	if txfee < minTxFee {
+	txfee, _ := amount.FromFloat64(withdrawAmount * txFeePercent)
+
+	if txfee.Cmp(minTxFee) == -1 {
 		txfee = minTxFee
 	}
 	withdrawAmountProxy, _ := amount.FromFloat64(withdrawAmount)
-	txfeeProxy, _ := amount.FromFloat64(txfee)
-	finalWithdrawAmount := withdrawAmountProxy.Sub(txfeeProxy)
+	finalWithdrawAmount := withdrawAmountProxy.Sub(txfee)
 
 	withdrawTxID, err := presenter.rpc.SendToAddress(address, finalWithdrawAmount.Float64())
 	if err != nil {
-		msg := fmt.Sprintf("%s Wallet maintenance", userMention)
-		s.ChannelMessageSend(channelID, msg)
+		msg := msgFromTmpl("walletMaintenance", userMention)
+		parts.channelMessageSend(msg)
 		return
 	}
-	msg := fmt.Sprintf("%s you withdraw %s %s to `%s`\ntxfee: %s %s\n%s%s", userMention, withdrawAmountProxy, symbol, address, txfeeProxy, symbol, presenter.coin.TxExplorerURL, withdrawTxID)
-	s.ChannelMessageSend(channelID, msg)
-	err = presenter.db.UserAmountUpsert(userID, m.Author.Username, -withdrawAmount)
+	msg := msgFromTmpl("withdrawSuccess", tmplValueMap{
+		"UserMention": userMention,
+		"Amount":      withdrawAmountProxy,
+		"Symbol":      symbol,
+		"Addr":        address,
+		"TxFee":       txfee,
+		"TxExpUrl":    presenter.coin.TxExplorerURL,
+		"TxID":        withdrawTxID,
+	})
+	parts.channelMessageSend(msg)
+	err = presenter.db.UserAmountUpsert(userID, parts.m.Author.Username, -withdrawAmount)
 	if err != nil {
-		log.Errorf("[%s] Withdraw Amount Update Error:%s[%s][%s][%s][%.8f]", symbol, err, userID, m.Author.Username, withdrawTxID, withdrawAmount)
+		log.Errorf("[%s] Withdraw Amount Update Error:%s[%s][%s][%s][%.8f]", symbol, err, userID, parts.m.Author.Username, withdrawTxID, withdrawAmount)
 	}
 	presenter.db.SaveWithdraw(userID, address, withdrawTxID, withdrawAmount)
 }
 
-func cmdBalHandler(s *discordgo.Session, m *discordgo.MessageCreate, parts *msgParts) {
-	cmdPrefix := parts.prefix
-	userID := m.Author.ID
-	channelID := m.ChannelID
-	channel, err := channel(s, channelID)
-	if err != nil {
-		log.Error("cmdBal Error:", err)
-		return
-	}
-	symbol, err := guildConfigPresenters.symbolByPrefix(channel.GuildID, cmdPrefix)
-	if err != nil {
-		log.Error("cmdBal Error:", err)
-		return
-	}
+func (p *guildConfigPresenter) cmdBalHandler(parts *msgParts) {
+	userID := parts.m.Author.ID
+	symbol := parts.symbol
 	presenter := coinPresenters[symbol]
 	user, err := presenter.db.UserByID(nil, userID)
 	if err != nil {
@@ -203,27 +223,20 @@ func cmdBalHandler(s *discordgo.Session, m *discordgo.MessageCreate, parts *msgP
 		confirmed = user.Amount
 		unconfirmed = user.UnconfirmedAmount
 	}
-	msgFormat := "%s Your balance:\n```Confirmed: %s %s\nUnconfirmed: %s %s```"
-	msg := fmt.Sprintf(msgFormat, m.Author.Mention(), confirmed, symbol, unconfirmed, symbol)
-	s.ChannelMessageSend(m.ChannelID, msg)
+	msg := msgFromTmpl("balAmount", tmplValueMap{
+		"UserMention":       parts.m.Author.Mention(),
+		"Amount":            confirmed,
+		"UnconfirmedAmount": unconfirmed,
+		"Symbol":            symbol,
+	})
+	parts.channelMessageSend(msg)
 
 }
 
-func cmdDepositHandler(s *discordgo.Session, m *discordgo.MessageCreate, parts *msgParts) {
-	cmdPrefix := parts.prefix
-	userID := m.Author.ID
-	userMention := m.Author.Mention()
-	channelID := m.ChannelID
-	channel, err := channel(s, channelID)
-	if err != nil {
-		log.Error("cmdBal Error:", err)
-		return
-	}
-	symbol, err := guildConfigPresenters.symbolByPrefix(channel.GuildID, cmdPrefix)
-	if err != nil {
-		log.Error("cmdBal Error:", err)
-		return
-	}
+func (p *guildConfigPresenter) cmdDepositHandler(parts *msgParts) {
+	userID := parts.m.Author.ID
+	userMention := parts.m.Author.Mention()
+	symbol := parts.symbol
 	presenter := coinPresenters[symbol]
 	user, err := presenter.db.UserByID(nil, userID)
 	if err != nil {
@@ -231,85 +244,67 @@ func cmdDepositHandler(s *discordgo.Session, m *discordgo.MessageCreate, parts *
 		return
 	}
 	if user != nil && user.Address != "" {
-		msg := fmt.Sprintf("%s You deposit Address is:\n`%s`", userMention, user.Address)
-		s.ChannelMessageSend(m.ChannelID, msg)
+		msg := msgFromTmpl("depositInfo", tmplValueMap{
+			"UserMention": userMention,
+			"Symbol":      symbol,
+			"Addr":        user.Address,
+		})
+		parts.channelMessageSend(msg)
 		return
 	}
 	address, err := presenter.rpc.GetNewAddress(userID)
 	if err != nil {
-		msg := fmt.Sprintf("%s Wallet maintenance", userMention)
-		s.ChannelMessageSend(m.ChannelID, msg)
+		msg := msgFromTmpl("walletMaintenance", userMention)
+		parts.channelMessageSend(msg)
 		return
 	}
-	err = presenter.db.UserAddressUpsert(userID, m.Author.Username, address, user == nil)
+	err = presenter.db.UserAddressUpsert(userID, parts.m.Author.Username, address, user == nil)
 	if err != nil {
 		log.Errorf("[%s] Deposit UserAddressUpsert Error:%s", symbol, err)
 		return
 	}
-	msg := fmt.Sprintf("%s You deposit Address is:\n`%s`", userMention, address)
-	s.ChannelMessageSend(m.ChannelID, msg)
+	msg := msgFromTmpl("depositInfo", tmplValueMap{
+		"UserMention": userMention,
+		"Symbol":      symbol,
+		"Addr":        address,
+	})
+	parts.channelMessageSend(msg)
 }
 
-func cmdPieHelperHandler(s *discordgo.Session, m *discordgo.MessageCreate, parts *msgParts) {
+func (p *guildConfigPresenter) cmdPieHelperHandler(parts *msgParts) {
 	cmdPrefix := parts.prefix
-	cmdNames := make([]string, 0, len(cmdInfoMap))
-	channelID := m.ChannelID
-	channel, err := channel(s, channelID)
-	if err != nil {
-		log.Error("cmdBal Error:", err)
-		return
-	}
-	symbol, err := guildConfigPresenters.symbolByPrefix(channel.GuildID, cmdPrefix)
-	if err != nil {
-		log.Error("cmdBal Error:", err)
-		return
-	}
-	for k := range cmdInfoMap {
-		cmdNames = append(cmdNames, k)
-	}
-	sort.Strings(cmdNames)
-	buf := new(bytes.Buffer)
-	msg := fmt.Sprintf("%s you can use these commands with prefix `%s` for `%s`\n", m.Author.Mention(), cmdPrefix, symbol)
-	buf.WriteString(msg)
+	symbol := parts.symbol
+
 	presenter := coinPresenters[symbol]
 	coinConfig := presenter.coin
-	isManager := isBotManager(s, m)
-	for _, k := range cmdNames {
-		cmdInfo := cmdInfoMap[k]
-		if cmdInfo.managerCmd && !isManager {
-			continue
-		}
-		usage := cmdInfo.usage
-		if k == "pie" {
-			pieMinAmount, _ := amount.FromFloat64(coinConfig.Pie.Min)
-			cmdUsage := fmt.Sprintf(usage, pieMinAmount, symbol)
-			buf.WriteString(cmdUsage)
-		} else if k == "withdraw" {
-			withdrawMinAmount := coinConfig.Withdraw.Min
-			minTxFee := coinConfig.Withdraw.TxFee
-			txFeePercent := coinConfig.Withdraw.TxFeePercent
-			cmdUsage := fmt.Sprintf(usage, withdrawMinAmount, symbol, txFeePercent*100, minTxFee, symbol)
-			buf.WriteString(cmdUsage)
-		} else if k == "channel" {
-			cmdUsage := fmt.Sprintf(usage, symbol)
-			buf.WriteString(cmdUsage)
-		} else {
-			buf.WriteString(usage)
-		}
-		buf.WriteString("\n")
+	isManager := parts.isManager
+	pieMinAmount, _ := amount.FromFloat64(coinConfig.Pie.Min)
+	withdrawMinAmount, _ := amount.FromFloat64(coinConfig.Withdraw.Min)
+	minTxFee, _ := amount.FromFloat64(coinConfig.Withdraw.TxFee)
+	txFeePercent := coinConfig.Withdraw.TxFeePercent * 100
+	cmdMsg := &cmdHelpUsageInfo{
+		cmdUsageInfo: cmdUsageInfo{
+			tmplName:        "helpUsage",
+			IsShowUsageHint: false,
+			CmdName:         "help",
+			UserMention:     parts.m.Author.Mention(),
+			Prefix:          string(cmdPrefix),
+			Symbol:          string(symbol),
+		},
+		cmdPieUsageInfo: cmdPieUsageInfo{
+			PieMin: pieMinAmount,
+		},
+		cmdWithdrawUserInfo: cmdWithdrawUserInfo{
+			WithdrawMin:  withdrawMinAmount,
+			TxFeePercent: txFeePercent,
+			TxFeeMin:     minTxFee,
+		},
+		IsManager: isManager,
 	}
-	s.ChannelMessageSend(m.ChannelID, buf.String())
+	parts.channelMessageSend(cmdMsg.String())
 }
 
-func pieReceivers(s *discordgo.Session, channelID, pieUserID string, isEveryone bool, isNeedOnline bool, roles []string, users []*discordgo.User) ([]*discordgo.User, error) {
-	channel, err := channel(s, channelID)
-	if err != nil {
-		return nil, err
-	}
-	guild, err := guild(s, channel.GuildID)
-	if err != nil {
-		return nil, err
-	}
+func (p *guildConfigPresenter) pieReceivers(s *discordgo.Session, guild *discordgo.Guild, channelID, pieUserID string, isEveryone bool, isNeedOnline bool, roles []string, users []*discordgo.User) ([]*discordgo.User, error) {
 	receivers := []*discordgo.User{}
 	for _, member := range guild.Members {
 		userID := member.User.ID
@@ -363,40 +358,44 @@ func pieReceivers(s *discordgo.Session, channelID, pieUserID string, isEveryone 
 
 const eachMsgReceiverNum = 30
 
-func cmdPieHandler(s *discordgo.Session, m *discordgo.MessageCreate, parts *msgParts) {
-	userID := m.Author.ID
-	userMention := m.Author.Mention()
+func (p *guildConfigPresenter) cmdPieHandler(parts *msgParts) {
+	userID := parts.m.Author.ID
+	userMention := parts.m.Author.Mention()
 	cmdPrefix := parts.prefix
-	channelID := m.ChannelID
-	channel, err := channel(s, channelID)
-	if err != nil {
-		log.Error("cmdBal Error:", err)
-		return
-	}
-	symbol, err := guildConfigPresenters.symbolByPrefix(channel.GuildID, cmdPrefix)
-	if err != nil {
-		log.Error("cmdBal Error:", err)
-		return
-	}
+	symbol := parts.symbol
 	presenter := coinPresenters[symbol]
 	coinConfig := presenter.coin
 	pieMinAmount, err := amount.FromFloat64(coinConfig.Pie.Min)
-	cmdUsage := fmt.Sprintf(parts.cmdInfo.usage, pieMinAmount, symbol)
-	msg := fmt.Sprintf("%s pie command usage:\n%s", userMention, cmdUsage)
-	partLen := len(parts.parts)
+	pieUsageInfo := &cmdPieUsageInfo{
+		cmdUsageInfo: cmdUsageInfo{
+			tmplName:        "pieUsage",
+			IsShowUsageHint: true,
+			CmdName:         "pie",
+			UserMention:     userMention,
+			Prefix:          string(cmdPrefix),
+			Symbol:          string(symbol),
+		},
+		PieMin: pieMinAmount,
+	}
+	cmdUsage := pieUsageInfo.String()
+	partLen := len(parts.contents)
 	if partLen == 0 {
-		s.ChannelMessageSend(channelID, msg)
+		parts.channelMessageSend(cmdUsage)
 		return
 	}
-	sendAmount, err := amount.FromNumString(parts.parts[partLen-1])
+	sendAmount, err := amount.FromNumString(parts.contents[partLen-1])
 	if err != nil {
-		s.ChannelMessageSend(channelID, msg)
+		parts.channelMessageSend(cmdUsage)
 		return
 	}
 
 	if sendAmount < pieMinAmount {
-		msg := fmt.Sprintf("%s Minimum amount `%s %s` allowed to be distribute", userMention, pieMinAmount, symbol)
-		s.ChannelMessageSend(channelID, msg)
+		msg := msgFromTmpl("pieAmountMinErr", tmplValueMap{
+			"UserMention": userMention,
+			"Min":         pieMinAmount,
+			"Symbol":      symbol,
+		})
+		parts.channelMessageSend(msg)
 		return
 	}
 
@@ -412,8 +411,14 @@ func cmdPieHandler(s *discordgo.Session, m *discordgo.MessageCreate, parts *msgP
 		userImmatureAmount = pieer.UnconfirmedAmount
 	}
 	if userAmount.Cmp(sendAmount) == -1 {
-		msg := fmt.Sprintf("%s your don't have enough amount to distribute\n please use command `%sdeposit` to get deposit address\n```Balance amount:%s %s\nUnconfirmed amount:%s %s```", userMention, cmdPrefix, userAmount, symbol, userImmatureAmount, symbol)
-		s.ChannelMessageSend(channelID, msg)
+		msg := msgFromTmpl("pieNotEnoughAmountErr", tmplValueMap{
+			"UserMention":       userMention,
+			"Prefix":            cmdPrefix,
+			"Amount":            userAmount,
+			"UnconfirmedAmount": userImmatureAmount,
+			"Symbol":            symbol,
+		})
+		parts.channelMessageSend(msg)
 		return
 	}
 
@@ -421,9 +426,9 @@ func cmdPieHandler(s *discordgo.Session, m *discordgo.MessageCreate, parts *msgP
 	isNeedOnline := true
 	if partLen == 1 {
 		isEveryone = true
-	} else if m.MentionEveryone {
+	} else if parts.m.MentionEveryone {
 		isEveryone = true
-		for _, part := range parts.parts {
+		for _, part := range parts.contents {
 			if strings.Contains(part, "@everyone") {
 				isNeedOnline = false
 				break
@@ -431,7 +436,7 @@ func cmdPieHandler(s *discordgo.Session, m *discordgo.MessageCreate, parts *msgP
 		}
 	}
 
-	receivers, err := pieReceivers(s, channelID, userID, isEveryone, isNeedOnline, m.MentionRoles, m.Mentions)
+	receivers, err := p.pieReceivers(parts.s, parts.guild, parts.m.ChannelID, userID, isEveryone, isNeedOnline, parts.m.MentionRoles, parts.m.Mentions)
 	if err != nil {
 		log.Errorf("Pie get receivers error:%s", err)
 		return
@@ -439,49 +444,49 @@ func cmdPieHandler(s *discordgo.Session, m *discordgo.MessageCreate, parts *msgP
 
 	receiversLen := len(receivers)
 	if receiversLen == 0 {
-		msg := fmt.Sprintf("%s No people to be distribute pie, Try again when people are online", userMention)
-		s.ChannelMessageSend(channelID, msg)
+		msg := msgFromTmpl("pieNoPeopleErr", userMention)
+		parts.channelMessageSend(msg)
 		return
 	}
 
 	amountEach := sendAmount.DivFloat64(float64(receiversLen))
 
 	if amountEach.Cmp(amount.Zero) == 0 {
-		msg := fmt.Sprintf("%s %s is not enough to distribute %d peoples", sendAmount, symbol, receiversLen)
-		s.ChannelMessageSend(channelID, msg)
+		msg := msgFromTmpl("pieNotEnoughEachErr", tmplValueMap{
+			"UserMention":   userMention,
+			"SendAmount":    sendAmount,
+			"Symbol":        symbol,
+			"ReceiverCount": receiversLen,
+		})
+		parts.channelMessageSend(msg)
 		return
 	}
 
-	err = presenter.db.UserAmountUpsert(userID, m.Author.Username, -sendAmount.Float64())
+	err = presenter.db.UserAmountUpsert(userID, parts.m.Author.Username, -sendAmount.Float64())
 	if err != nil {
 		log.Errorf("Pie modify sender amount error:%s", err)
 		return
 	}
 
-	// Max msg count
-	sendMsgCount := int(math.Ceil(float64(receiversLen) / eachMsgReceiverNum))
-	sendMsgs := make([]*bytes.Buffer, sendMsgCount)
-	for i := 0; i < sendMsgCount; i++ {
-		sendMsgs[i] = new(bytes.Buffer)
-		if i == 0 {
-			msg := fmt.Sprintf(":lollipop: ~ ~ ~ ~ ~ ~ ~ ~ %s pie ~ ~ ~ ~ ~ ~ ~ ~:candy:\n%s %s to", coinConfig.Name, amountEach, symbol)
-			sendMsgs[i].WriteString(msg)
-		}
-	}
-
+	receiversMap := make(map[int][]string)
 	for i, receiver := range receivers {
 		//msg index
 		index := int(math.Floor(float64(i) / eachMsgReceiverNum))
-		sendMsgs[index].WriteString(" ")
-		sendMsgs[index].WriteString(receiver.Mention())
+		receiversMap[index] = append(receiversMap[index], receiver.Mention())
 		err = presenter.db.UserAmountUpsert(receiver.ID, receiver.Username, amountEach.Float64())
 		if err != nil {
 			log.Errorf("Pie modify receiver amount error:%s", err)
 		}
 	}
 
-	for _, sendMsg := range sendMsgs {
-		s.ChannelMessageSend(channelID, sendMsg.String())
+	for _, receivers := range receiversMap {
+		msg := msgFromTmpl("pieSuccess", tmplValueMap{
+			"CoinName":   coinConfig.Name,
+			"AmountEach": amountEach,
+			"Symbol":     symbol,
+			"Receivers":  receivers,
+		})
+		parts.channelMessageSend(msg)
 	}
 
 }
@@ -494,16 +499,32 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if len(cntParts) == 0 {
 		return
 	}
-	if cntParts[0] == "?pie" {
-		cmdPieSet(s, m, cntParts[1:])
-		return
-	}
 	channel, err := channel(s, m.ChannelID)
 	if err != nil {
-		log.Error("messageCreateHandler Error:", err)
+		log.Error("messageCreateHandler channel Error:", err)
 		return
 	}
-	prefixList := guildConfigPresenters.prefixList(channel.GuildID)
+	guild, err := guild(s, channel.GuildID)
+	if err != nil {
+		log.Error("messageCreateHandler guild Error:", err)
+		return
+	}
+	gcp, ok := guildConfigPresenters[channel.GuildID]
+	if !ok {
+		gcp = guildConfigPresenters.initGuildConfigPresenter(channel.GuildID)
+	}
+	msgParts := &msgParts{
+		s:        s,
+		m:        m,
+		channel:  channel,
+		guild:    guild,
+		contents: cntParts[1:],
+	}
+	if cntParts[0] == "?pie" {
+		gcp.cmdMainPie(msgParts)
+		return
+	}
+	prefixList := gcp.prefixList()
 	if len(prefixList) == 0 {
 		log.Error("Prefix List is Empty:", channel.GuildID)
 		return
@@ -519,31 +540,28 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		// log.Error("can't find match prefix for:", channel.GuildID)
 		return
 	}
+	// just only prefix
 	if strings.Compare(string(prefix), cntParts[0]) == 0 {
 		return
 	}
-	gcm, ok := guildConfigPresenters[channel.GuildID]
-	if !ok {
-		log.Error("No Guild Config for", channel.GuildID)
-		return
-	}
-	symbol, err := guildConfigPresenters.symbolByPrefix(channel.GuildID, prefix)
-	cmd := strings.Replace(cntParts[0], string(prefix), "", 1)
-	msgParts := &msgParts{
-		prefix: prefix,
-		parts:  cntParts[1:],
-	}
 
-	isInChannel := gcm.guildCoinConfig[symbol].InChannels(m.ChannelID)
+	msgParts.prefix = prefix
+
+	symbol, err := gcp.symbolByPrefix(prefix)
+	msgParts.symbol = symbol
+
+	cmd := strings.Replace(cntParts[0], string(prefix), "", 1)
+	isInChannel := gcp.gccMap[symbol].inChannels(m.ChannelID)
 	if cmdInfo, ok := cmdInfoMap[cmd]; ok {
 		if cmdInfo.channelLimit && !isInChannel {
 			return
 		}
-		if cmdInfo.managerCmd && !isBotManager(s, m) {
+		isManager := gcp.isBotManager(s, guild, m.Author.ID)
+		msgParts.isManager = isManager
+		if cmdInfo.managerCmd && !isManager {
 			return
 		}
-		msgParts.cmdInfo = cmdInfo
-		cmdInfo.handler(s, m, msgParts)
+		cmdInfo.handler(gcp, msgParts)
 	}
 }
 

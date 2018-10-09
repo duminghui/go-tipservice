@@ -15,15 +15,56 @@ func hasSymbol(symbol symbolWrap) bool {
 	return false
 }
 
+type GuildCoinConfig struct {
+	prefix     prefixWrap
+	symbol     symbolWrap
+	channelIDs []string
+}
+
+func (g *GuildCoinConfig) inChannels(channelID string) bool {
+	if len(g.channelIDs) == 0 {
+		return true
+	}
+	for _, channel := range g.channelIDs {
+		if channel == channelID {
+			return true
+		}
+	}
+	return false
+}
+
 type symbolWrap string
 type prefixWrap string
 
 type guildConfigPresenter struct {
-	prefixSymbolMap map[prefixWrap]symbolWrap
-	symbolPrefixMap map[symbolWrap]prefixWrap
+	guildID      string
+	prefixSymbol map[prefixWrap]symbolWrap
+	gccMap       map[symbolWrap]*GuildCoinConfig
+	managers     []string
+	managerRoles []string
+	// symbolPrefixMap map[symbolWrap]prefixWrap
 	// key symbol
-	guildCoinConfig map[symbolWrap]*db.GuildCoinConfig
-	guildManager    *db.GuildManager
+	// guildCoinConfig map[symbolWrap]GuildCoinConfig
+}
+
+func (p *guildConfigPresenter) isManager(userID string) bool {
+	for _, member := range p.managers {
+		if member == userID {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *guildConfigPresenter) inManagerRoles(userRoles []string) bool {
+	for _, role := range p.managerRoles {
+		for _, userRole := range userRoles {
+			if role == userRole {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // key guildid
@@ -37,151 +78,123 @@ func initGuildConfig() {
 		return
 	}
 	for _, v := range guildConfigList {
-		guildCfgMge, ok := guildConfigPresenters[v.GuildID]
+		p, ok := guildConfigPresenters[v.GuildID]
 		if !ok {
-			guildCfgMge = guildConfigPresenters.initGuildConfigManager(v.GuildID)
+			p = guildConfigPresenters.initGuildConfigPresenter(v.GuildID)
 		}
-		guildCfgMge.prefixSymbolMap[prefixWrap(v.CmdPrefix)] = symbolWrap(v.Symbol)
-		guildCfgMge.symbolPrefixMap[symbolWrap(v.Symbol)] = prefixWrap(v.CmdPrefix)
-		guildCfgMge.guildCoinConfig[symbolWrap(v.Symbol)] = v
+		gcc := &GuildCoinConfig{
+			prefix:     prefixWrap(v.CmdPrefix),
+			symbol:     symbolWrap(v.Symbol),
+			channelIDs: v.ChannelIDs,
+		}
+		p.prefixSymbol[gcc.prefix] = gcc.symbol
+		p.gccMap[symbolWrap(v.Symbol)] = gcc
 	}
 	guildManagerList, err := db.GuildManagerList()
 	if err != nil {
 		return
 	}
 	for _, v := range guildManagerList {
-		guildCfgMge, ok := guildConfigPresenters[v.GuildID]
+		p, ok := guildConfigPresenters[v.GuildID]
 		if !ok {
-			guildCfgMge = guildConfigPresenters.initGuildConfigManager(v.GuildID)
+			p = guildConfigPresenters.initGuildConfigPresenter(v.GuildID)
 		}
-		guildCfgMge.guildManager = v
+		p.managers = v.Managers
+		p.managerRoles = v.ManagerRoles
 	}
 }
 
-func (p guildConfigPresenterMap) initGuildConfigManager(guildID string) *guildConfigPresenter {
-	guildCfgMge := new(guildConfigPresenter)
-	guildCfgMge.prefixSymbolMap = make(map[prefixWrap]symbolWrap)
-	guildCfgMge.symbolPrefixMap = make(map[symbolWrap]prefixWrap)
-	guildCfgMge.guildCoinConfig = make(map[symbolWrap]*db.GuildCoinConfig)
-	p[guildID] = guildCfgMge
-	return guildCfgMge
+func (g guildConfigPresenterMap) initGuildConfigPresenter(guildID string) *guildConfigPresenter {
+	p := new(guildConfigPresenter)
+	p.guildID = guildID
+	p.prefixSymbol = make(map[prefixWrap]symbolWrap)
+	p.gccMap = make(map[symbolWrap]*GuildCoinConfig)
+	p.managers = []string{}
+	p.managerRoles = []string{}
+	g[guildID] = p
+	return p
 }
 
-func (p guildConfigPresenterMap) prefixList(guildID string) []prefixWrap {
-	guildCfgMge, ok := guildConfigPresenters[guildID]
-	if !ok {
-		return []prefixWrap{}
-	}
-	prefixs := make([]prefixWrap, 0, len(guildCfgMge.prefixSymbolMap))
-	for k := range guildCfgMge.prefixSymbolMap {
+func (p *guildConfigPresenter) prefixList() []prefixWrap {
+	prefixs := make([]prefixWrap, 0, len(p.prefixSymbol))
+	for k := range p.prefixSymbol {
 		prefixs = append(prefixs, k)
 	}
 	return prefixs
 }
 
-func (p guildConfigPresenterMap) symbolByPrefix(guildID string, pfx prefixWrap) (symbolWrap, error) {
-	guildCfgMge, ok := p[guildID]
+func (p *guildConfigPresenter) symbolByPrefix(pfx prefixWrap) (symbolWrap, error) {
+	symbol, ok := p.prefixSymbol[pfx]
 	if !ok {
-		return "", fmt.Errorf("symbolByPrefix no GuildConfigMapager:%s:%s", guildID, pfx)
+		return "", fmt.Errorf("symbolByPrefix No Symbol:%s %s", p.guildID, pfx)
 	}
-	sbl, ok := guildCfgMge.prefixSymbolMap[pfx]
-	if !ok {
-		return "", fmt.Errorf("symbolByPrefix No Symbol:%s %s", guildID, pfx)
-	}
-	return sbl, nil
+	return symbol, nil
 }
 
-func (p guildConfigPresenterMap) updatePrefix(guildID string, sbl symbolWrap, newPrefix prefixWrap) error {
-	guildCfgMge, ok := p[guildID]
-	if !ok {
-		guildCfgMge = p.initGuildConfigManager(guildID)
-	}
-	guildCoinConfig, ok := guildCfgMge.guildCoinConfig[sbl]
-	if !ok {
-		guildCoinConfig = &db.GuildCoinConfig{
-			GuildID: guildID,
-			Symbol:  string(sbl),
-		}
-	}
-	guildCoinConfig.UpdateCmdPrefix(string(newPrefix))
-	oldPfx, ok := guildCfgMge.symbolPrefixMap[sbl]
-	if ok {
-		delete(guildCfgMge.prefixSymbolMap, oldPfx)
-	}
-	guildCfgMge.prefixSymbolMap[newPrefix] = sbl
-	guildCfgMge.symbolPrefixMap[sbl] = newPrefix
-	guildCoinConfigDB, err := db.GuildCoinConfigBySymbol(guildID, string(sbl))
+func (p *guildConfigPresenter) updatePrefix(sbl symbolWrap, oldPrefix, newPrefix prefixWrap) error {
+	err := db.GuildCoinUpdateCmdPrefix(p.guildID, string(sbl), string(newPrefix))
 	if err != nil {
-		log.Errorf("update prefix GuildCoinConfigBySymbol error:%s,%s:%s", err, guildID, sbl)
+		log.Errorf("updatePrefix err:%s,%s,%s,%s", err, p.guildID, sbl, newPrefix)
 		return err
 	}
-	guildCfgMge.guildCoinConfig[sbl] = guildCoinConfigDB
+	delete(p.prefixSymbol, oldPrefix)
+	p.prefixSymbol[newPrefix] = sbl
+	gccDB, err := db.GuildCoinConfigBySymbol(p.guildID, string(sbl))
+	if err != nil {
+		log.Errorf("update prefix GuildCoinConfigBySymbol error:%s,%s:%s", err, p.guildID, sbl)
+		return err
+	}
+	gcc := &GuildCoinConfig{
+		prefix:     prefixWrap(gccDB.CmdPrefix),
+		symbol:     symbolWrap(gccDB.Symbol),
+		channelIDs: gccDB.ChannelIDs,
+	}
+	p.gccMap[sbl] = gcc
 	return nil
 }
 
-func (p guildConfigPresenterMap) guildCoinConfigBySymbol(guildID string, symbol symbolWrap) (*db.GuildCoinConfig, error) {
-	guildCfgMge, ok := p[guildID]
-	if !ok {
-		return nil, fmt.Errorf("coinConfig no GuildConfigManager:%s:%s", guildID, symbol)
-	}
-	coinConfig, ok := guildCfgMge.guildCoinConfig[symbol]
-	if !ok {
-		coinConfig = new(db.GuildCoinConfig)
-		coinConfig.GuildID = guildID
-		coinConfig.Symbol = string(symbol)
-		guildCfgMge.guildCoinConfig[symbol] = coinConfig
-	}
-	return coinConfig, nil
-}
-
-func (p guildConfigPresenterMap) guildChannelUpdate(guildID string, symbol symbolWrap, operator string, channel []string) ([]string, error) {
-	guildCfgMge := p[guildID]
-	guildCoinConfig := guildCfgMge.guildCoinConfig[symbol]
+func (p *guildConfigPresenter) guildChannelUpdate(sbl symbolWrap, operator string, channels []string) ([]string, error) {
 	var err error
 	if operator == "add" {
-		err = guildCoinConfig.ChannelAdd(channel)
+		err = db.GuildCoinChannelAdd(p.guildID, string(sbl), channels)
 	} else {
-		err = guildCoinConfig.ChannelRemove(channel)
+		err = db.GuildCoinChannelRemove(p.guildID, string(sbl), channels)
 	}
 	if err != nil {
-		log.Errorf("GuildChannelUpdate Error:%s,%s:%s:%s", err, guildID, symbol, operator)
+		log.Errorf("GuildChannelUpdate Error:%s,%s:%s:%s", err, p.guildID, sbl, operator)
 		return nil, err
 	}
-	guildCoinConfigDB, err := db.GuildCoinConfigBySymbol(guildID, string(symbol))
+	gccDB, err := db.GuildCoinConfigBySymbol(p.guildID, string(sbl))
 	if err != nil {
-		log.Errorf("update channel GuildCoinConfigBySymbol error:%s,%s:%s", err, guildID, symbol)
+		log.Errorf("update channel GuildCoinConfigBySymbol error:%s,%s:%s", err, p.guildID, sbl)
 		return nil, err
 	}
-	guildCfgMge.guildCoinConfig[symbol] = guildCoinConfigDB
-	return guildCoinConfigDB.ChannelIDs, nil
+	gcc := &GuildCoinConfig{
+		prefix:     prefixWrap(gccDB.CmdPrefix),
+		symbol:     symbolWrap(gccDB.Symbol),
+		channelIDs: gccDB.ChannelIDs,
+	}
+	p.gccMap[sbl] = gcc
+	return gccDB.ChannelIDs, nil
 }
 
-func (p guildConfigPresenterMap) guildManagerUpdate(guildID string, operator string, users, roles []string) ([]string, []string, error) {
-	guildCfgMge, ok := guildConfigPresenters[guildID]
-	if !ok {
-		guildCfgMge = guildConfigPresenters.initGuildConfigManager(guildID)
-	}
-	gm := guildCfgMge.guildManager
-	if gm == nil {
-		gm = &db.GuildManager{
-			GuildID: guildID,
-		}
-	}
+func (p *guildConfigPresenter) guildManagerUpdate(operator string, users, roles []string) ([]string, []string, error) {
 	var err error
 	if operator == "add" {
-		err = gm.ManagerAdd(users, roles)
+		err = db.GuildManagerAdd(p.guildID, users, roles)
 	} else {
-		err = gm.ManagerRemove(users, roles)
+		err = db.GuildManagerRemove(p.guildID, users, roles)
 	}
 	if err != nil {
-		log.Errorf("guildManagerUpdate Error:%s,%s:%s", err, guildID, operator)
+		log.Errorf("guildManagerUpdate Error:%s,%s:%s", err, p.guildID, operator)
 		return nil, nil, err
 	}
-	gmDB, err := db.GuildManagerByGuildID(guildID)
+	gmDB, err := db.GuildManagerByGuildID(p.guildID)
 	if err != nil {
-		log.Errorf("guildManagerUpdate read from db Error:%s,%s", err, guildID)
+		log.Errorf("guildManagerUpdate read from db Error:%s,%s", err, p.guildID)
 		return nil, nil, err
 	}
-	guildCfgMge.guildManager = gmDB
+	p.managers = gmDB.Managers
+	p.managerRoles = gmDB.ManagerRoles
 	return gmDB.Managers, gmDB.ManagerRoles, nil
 }

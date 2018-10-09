@@ -17,12 +17,12 @@ type GuildManager struct {
 	ManagerRoles []string `bson:"managerroles"`
 }
 
-func (gm *GuildManager) ManagerRemove(users, roles []string) error {
+func GuildManagerRemove(guildID string, users, roles []string) error {
 	session := mgoSession.Clone()
 	defer session.Close()
 	col := session.DB(dbGuildConfig).C(colGuildManager)
 	selector := bson.M{
-		"guildid": gm.GuildID,
+		"guildid": guildID,
 	}
 	manager := new(GuildManager)
 	err := col.Find(selector).One(manager)
@@ -68,12 +68,12 @@ func (gm *GuildManager) ManagerRemove(users, roles []string) error {
 	return err
 }
 
-func (gm *GuildManager) ManagerAdd(users, roles []string) error {
+func GuildManagerAdd(guildID string, users, roles []string) error {
 	session := mgoSession.Clone()
 	defer session.Close()
 	col := session.DB(dbGuildConfig).C(colGuildManager)
 	selector := bson.M{
-		"guildid": gm.GuildID,
+		"guildid": guildID,
 	}
 	manager := new(GuildManager)
 	err := col.Find(selector).One(manager)
@@ -82,7 +82,7 @@ func (gm *GuildManager) ManagerAdd(users, roles []string) error {
 	}
 	if err != nil && err == mgo.ErrNotFound {
 		data := &GuildManager{
-			GuildID:      gm.GuildID,
+			GuildID:      guildID,
 			Managers:     users,
 			ManagerRoles: roles,
 		}
@@ -125,26 +125,6 @@ func (gm *GuildManager) ManagerAdd(users, roles []string) error {
 	return err
 }
 
-func (gm *GuildManager) IsManager(userID string) bool {
-	for _, member := range gm.Managers {
-		if member == userID {
-			return true
-		}
-	}
-	return false
-}
-
-func (gm *GuildManager) InManagerRoles(userRoles []string) bool {
-	for _, role := range gm.ManagerRoles {
-		for _, userRole := range userRoles {
-			if role == userRole {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 func GuildManagerList() ([]*GuildManager, error) {
 	session := mgoSession.Clone()
 	defer session.Close()
@@ -175,29 +155,17 @@ type GuildCoinConfig struct {
 	ChannelIDs []string `bson:"channelids,omitempty"`
 }
 
-func (gc *GuildCoinConfig) InChannels(channelID string) bool {
-	if len(gc.ChannelIDs) == 0 {
-		return true
-	}
-	for _, channel := range gc.ChannelIDs {
-		if channel == channelID {
-			return true
-		}
-	}
-	return false
-}
-
 type guildCoinConfigChannel struct {
 	ChannelIDs []string `bson:"channelids"`
 }
 
-func (gc *GuildCoinConfig) ChannelRemove(channels []string) error {
+func GuildCoinChannelRemove(guildID, symbol string, channels []string) error {
 	session := mgoSession.Clone()
 	defer session.Close()
 	col := session.DB(dbGuildConfig).C(colGuildCoinConfig)
 	selector := &GuildCoinConfig{
-		GuildID: gc.GuildID,
-		Symbol:  gc.Symbol,
+		GuildID: guildID,
+		Symbol:  symbol,
 	}
 	coinConfig := new(GuildCoinConfig)
 	err := col.Find(selector).One(coinConfig)
@@ -224,13 +192,13 @@ func (gc *GuildCoinConfig) ChannelRemove(channels []string) error {
 	return err
 }
 
-func (gc *GuildCoinConfig) ChannelAdd(channels []string) error {
+func GuildCoinChannelAdd(guildID, symbol string, channels []string) error {
 	session := mgoSession.Clone()
 	defer session.Close()
 	col := session.DB(dbGuildConfig).C(colGuildCoinConfig)
 	selector := &GuildCoinConfig{
-		GuildID: gc.GuildID,
-		Symbol:  gc.Symbol,
+		GuildID: guildID,
+		Symbol:  symbol,
 	}
 	coinConfig := new(GuildCoinConfig)
 	err := col.Find(selector).One(coinConfig)
@@ -257,13 +225,13 @@ func (gc *GuildCoinConfig) ChannelAdd(channels []string) error {
 	return err
 }
 
-func (gc *GuildCoinConfig) UpdateCmdPrefix(cmdPrefix string) error {
+func GuildCoinUpdateCmdPrefix(guildID, symbol string, cmdPrefix string) error {
 	session := mgoSession.Clone()
 	defer session.Close()
 	col := session.DB(dbGuildConfig).C(colGuildCoinConfig)
 	selector := &GuildCoinConfig{
-		GuildID: gc.GuildID,
-		Symbol:  gc.Symbol,
+		GuildID: guildID,
+		Symbol:  symbol,
 	}
 	data := bson.M{
 		"$set": &GuildCoinConfig{
@@ -276,8 +244,8 @@ func (gc *GuildCoinConfig) UpdateCmdPrefix(cmdPrefix string) error {
 	}
 	if err != nil && err == mgo.ErrNotFound {
 		data := &GuildCoinConfig{
-			GuildID:   gc.GuildID,
-			Symbol:    gc.Symbol,
+			GuildID:   guildID,
+			Symbol:    symbol,
 			CmdPrefix: cmdPrefix,
 		}
 		err := col.Insert(data)

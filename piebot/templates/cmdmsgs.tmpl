@@ -1,0 +1,118 @@
+{{define "walletMaintenance" -}}
+{{.}} Wallet maintenance
+{{- end}}
+
+{{define "withdrawMinAmountErr" -}}
+{{.UserMention}} withdraw minimum amount is `{{.Min}} {{.Symbol}}`
+{{- end}}
+
+{{define "withdrawValidateAddrErr" -}}
+{{.UserMention}} `{{.Addr}}` is not {{.Symbol}}'s address
+{{- end}}
+
+{{define "withdrawBotAddrErr" -}}
+{{.UserMention}} `{{.Addr}}` is in bot's wallet, you can use `{{.Prefix}}pie` command to give someone {{.Symbol}}
+{{- end}}
+
+{{define "withdrawAmountNotEnoughErr" -}}
+{{.UserMention}} you don't have enouth amount to withdraw
+```Balance amount:{{.Amount}} {{.Symbol}}
+Unconfirmed amount:{{.UnconfirmedAmount}} {{.Symbol}}```
+{{- end}}
+
+{{define "withdrawSuccess" -}}
+{{.UserMention}} you withdraw {{.Amount}} {{.Symbol}} to `{{.Addr}}`
+txfee: {{.TxFee}} {{.Symbol}}
+{{.TxExpUrl}}{{.TxID}}
+{{- end}}
+
+{{define "balAmount" -}}
+{{.UserMention}} Your balance:
+```Confirmed: {{.Amount}} {{.Symbol}}
+Unconfirmed: {{.UnconfirmedAmount}} {{.Symbol}}```
+{{- end}}
+
+{{define "depositInfo" -}}
+{{.UserMention}} Your {{.Symbol}}'s deposit address is:
+`{{.Addr}}`
+{{- end}}
+
+{{define "pieAmountMinErr" -}}
+{{.UserMention}} Minimum amount `{{.Min}} {{.Symbol}}` allowed to be distribute
+{{- end}}
+
+{{define "pieNotEnoughAmountErr" -}}
+{{.UserMention}} you don't have enough amount to distribute
+please use command `{{.Prefix}}deposit` to get deposit address
+```Balance amount: {{.Amount}} {{.Symbol}}
+Unconfirmed amount: {{.UnconfirmedAmount}} {{.Symbol}}```
+{{- end}}
+
+{{define "pieNoPeopleErr" -}}
+{{.}} No people to be distribute pie, Try again when people are online
+{{- end}}
+
+{{define "pieNotEnoughEachErr" -}}
+{{.UserMention}} {{.SendAmount}} {{.Symbol}} is not enough to distribute {{.ReceiverCount}} peoples
+{{- end}}
+
+{{define "pieSuccess" -}}
+:lollipop: ~ ~ ~ ~ ~ ~ ~ ~ {{.CoinName}} pie ~ ~ ~ ~ ~ ~ ~ ~:candy:
+{{.AmountEach}} {{.Symbol}} to{{range .Receivers}} {{.}}{{end}}
+{{- end}}
+
+{{define "channelOperatorSuccess" -}}
+{{.UserMention -}}
+{{if eq .Operator "add" -}}
+{{" "}}Added successfully
+{{- else -}}
+{{" "}}Remove successfully
+{{- end}}
+`{{.Symbol}}`'s commands now active in these channels:
+{{- range .Channels }} <#{{.}}>{{else}} all channels{{end}}
+{{- end}}
+
+{{define "pieMainManagerList" -}}
+***Manager:***
+  **User:**
+    - {{join .Managers ", "}}
+  **Role:**
+    - {{join .ManagerRoles ", "}}
+{{- end}}
+
+{{define "pieMainManagerInfo" -}}
+{{.UserMention}} now server manager:
+{{template "pieMainManagerList" .}}
+{{- end}}
+
+{{define "pieMainInfo" -}}
+{{.UserMention}} Server Config:
+{{- range .CoinConfigs}}
+***{{.Symbol}}***
+  **Prefix:** {{.Prefix}}
+  **Active channels:** {{if .Channels}}{{join .Channels " "}}{{else}}All channel{{end}}
+{{- end}}
+{{template "pieMainManagerList" .}}
+{{- end}}
+
+{{define "pieMainPrefixErr" -}}
+{{.}} prefix `?` is reserved for the bot
+{{- end}}
+
+{{define "pieMainPrefixSymbolNotExistErr" -}}
+{{.UserMention}} don't have this coin's symbol `{{.Symbol}}`
+{{- end}}
+
+{{define "pieMainPrefixExistErr" -}}
+{{.UserMention}} command prefix `{{.Prefix}}` configuration to the `{{.Symbol}}` failed!
+`{{.Prefix}}` has been configured for `{{.Symbol}}`
+{{- end}}
+
+{{define "pieMainPrefixSuccess" -}}
+{{.UserMention}} command prefix `{{.Prefix}}` configuration to the `{{.Symbol}}` successfully
+{{- end}}
+
+{{define "pieMainListInfo" -}}
+{{.UserMention}} All configureable coin's symbol:
+{{range .Symbols}} -- **{{.}}** {{end}}
+{{- end}}

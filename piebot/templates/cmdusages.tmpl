@@ -1,0 +1,73 @@
+{{define "main"}}{{end}}
+{{define "usage" -}}
+{{.UserMention}} {{.CmdName}} command usage:{{"\n"}}
+{{- end}}
+
+{{define "pieUsage" -}}
+{{if .IsShowUsageHint}}{{template "usage" . }}{{end -}}
+***{{.Prefix}}pie [@receiver...] <amount>***
+  pie {{.Symbol}} to receivers
+  minimun amount:{{.PieMin}} {{.Symbol}}
+{{- end}}
+
+{{define "balUsage" -}}
+***{{.Prefix}}bal***
+  get balance amount
+{{- end}}
+
+{{define "depositUsage" -}}
+***{{.Prefix}}deposit***
+  get deposit address
+{{- end}}
+
+{{define "withdrawUsage" -}}
+{{if .IsShowUsageHint}}{{template "usage" . }}{{end -}}
+***{{.Prefix}}withdraw <address> <amount>***
+  minimun amount:{{.WithdrawMin}} {{.Symbol}}
+  txfee:{{printf "%g%%" .TxFeePercent}} of <amount> or minimun {{.TxFeeMin}} {{.Symbol}}
+{{- end}}
+
+{{define "channelUsage" -}}
+{{if .IsShowUsageHint}}{{template "usage" . }}{{end -}}
+***{{.Prefix}}channel <add|remove> <#channel...>***
+  add or remove active channel for `{{.Symbol}}` `s commands
+{{- end}}
+
+{{define "helpUsage" -}}
+{{.UserMention}} you can use these commands for `{{.Symbol}}`
+{{template "pieUsage" .}}
+{{template "balUsage" .}}
+{{template "depositUsage" .}}
+{{template "withdrawUsage" . }}
+{{- if .IsManager}}{{"\n"}}{{template "channelUsage" .}}{{end}}
+{{- end}}
+
+{{define "pieMainManagerUsage" -}}
+{{if .IsShowUsageHint}}{{template "usage" . }}{{end -}}
+**?pie manager <add|remove> <@user|@role>**
+  add or remove manager for PieBot
+{{- end}}
+
+{{define "pieMainPrefixUsage" -}}
+{{if .IsShowUsageHint}}{{template "usage" . }}{{end -}}
+**?pie prefix <symbol> <prefix>**
+  config <symbol>' command prefix
+{{- end}}
+
+{{define "pieMainInfoUsage" -}}
+**?pie info**
+  show server config info
+{{- end}}
+
+{{define "pieMainListUsage" -}}
+**?pie list**
+  list all configurable coin's symols
+{{- end}}
+
+{{define "pieMainHelpUsage" -}}
+{{.}} You can use these commands:
+{{template "pieMainInfoUsage"}}
+{{template "pieMainListUsage"}}
+{{template "pieMainPrefixUsage"}}
+{{template "pieMainManagerUsage"}}
+{{- end}}

@@ -19,7 +19,7 @@ import (
 
 var (
 	cmdFlag    = flag.String("s", "", "send signal to the daemon\nstop - fast shutdown")
-	configFile = flag.String("c", "config.json", "config file path")
+	configFile = flag.String("c", "piebot.json", "config file path")
 )
 
 func main() {
@@ -57,6 +57,7 @@ func main() {
 	log.Info("-----------------------")
 	log.Info("daemon started")
 
+	loadTemplates()
 	initPresenter()
 
 	go terminateHelper()
