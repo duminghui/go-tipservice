@@ -10,9 +10,6 @@ import (
 )
 
 func (p *guildConfigPresenter) cmdMainPie(parts *msgParts) {
-	// if !isBotManager(s, guild, m.Author.ID) {
-	// return
-	// }
 	cntParts := parts.contents
 	switch {
 	case len(cntParts) == 0:
@@ -115,7 +112,7 @@ func (p *guildConfigPresenter) cmdPieMainManagerHandler(parts *msgParts) {
 }
 
 func (p *guildConfigPresenter) isBotManager(s *discordgo.Session, guild *discordgo.Guild, userID string) bool {
-	if userID == piebotConfig.Discord.SuperManagerID {
+	if strings.Contains(piebotConfig.Discord.SuperManagerIDs, userID) {
 		return true
 	}
 	if userID == guild.OwnerID {

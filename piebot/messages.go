@@ -521,7 +521,12 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		guild:    guild,
 		contents: cntParts[1:],
 	}
+	isManager := gcp.isBotManager(s, guild, m.Author.ID)
+	msgParts.isManager = isManager
 	if cntParts[0] == "?pie" {
+		if !isManager {
+			return
+		}
 		gcp.cmdMainPie(msgParts)
 		return
 	}
@@ -557,8 +562,6 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if cmdInfo.channelLimit && !isInChannel {
 			return
 		}
-		isManager := gcp.isBotManager(s, guild, m.Author.ID)
-		msgParts.isManager = isManager
 		if cmdInfo.managerCmd && !isManager {
 			return
 		}

@@ -10,8 +10,8 @@ import (
 )
 
 type Discord struct {
-	Token          string `json:"token"`
-	SuperManagerID string `json:"supermanagerid"`
+	Token           string `json:"token"`
+	SuperManagerIDs string `json:"supermanagerids"`
 }
 
 type PieBotConfig struct {
