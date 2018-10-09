@@ -7,24 +7,57 @@ import (
 	"github.com/globalsign/mgo/bson"
 )
 
+func (db *DB) cDeposit(session *mgo.Session) *mgo.Collection {
+	return session.DB(db.database).C("deposit")
+}
+
+// type Deposit struct {
+// UserID      string  `bson:"user_id"`
+// UserName    string  `bson:"user_name"`
+// Amount      float64 `bson:"amount"`
+// TxID        string  `bson:"txid"`
+// Address     string  `bson:"addresses"`
+// IsConfirmed bool    `bson:"isConfirmed"`
+// }
+
+type Deposit struct {
+	UserID      string  `bson:"user_id,omitempty"`
+	UserName    string  `bson:"user_name,omitempty"`
+	Amount      float64 `bson:"amount,omitempty"`
+	TxID        string  `bson:"txid,omitempty"`
+	Address     string  `bson:"addresses,omitempty"`
+	IsConfirmed bool    `bson:"isConfirmed,omitempty"`
+}
+
+type NoOwnerDeposit struct {
+	TxID    string  `bson:"txid"`
+	Address string  `bson:"address"`
+	Amount  float64 `bson:"amount"`
+}
+
+func (db *DB) cNoOwnerDeposit(session *mgo.Session) *mgo.Collection {
+	return session.DB(db.database).C("no_owner_deposit")
+}
+
 func (db *DB) Deposit(address, txid string, amountF float64, isConfirmed bool) error {
 	session := mgoSession.Clone()
 	defer session.Close()
-	user, err := db.UserByAddress(session, address)
+	user, err := db.userByAddress(session, address)
 	if err != nil {
 		return err
 	}
 	symbol := db.symbol
 	if user == nil {
 		db.saveNoOwnerDeposit(session, txid, address, amountF)
-		db.UpsertTxProcess(session, symbol, txid, TxProcessStatusDone, 0)
+		db.TxProcessStatusDone(session, symbol, txid)
 		return nil
 	}
 	depositQuery := &Deposit{
 		TxID:    txid,
 		Address: address,
 	}
-	query := session.DB(db.database).C(colDeposit).Find(depositQuery)
+	c := db.cDeposit(session)
+	query := c.Find(depositQuery)
 	deposit := new(Deposit)
 	err = query.One(deposit)
 	if err != nil && err != mgo.ErrNotFound {
@@ -33,70 +66,53 @@ func (db *DB) Deposit(address, txid string, amountF float64, isConfirmed bool) e
 	if err != nil && err == mgo.ErrNotFound {
 		depositData := &Deposit{
 			UserID:      user.UserID,
+			UserName:    user.UserName,
 			Amount:      amountF,
 			TxID:        txid,
 			Address:     address,
 			IsConfirmed: isConfirmed,
 		}
-		err = session.DB(db.database).C(colDeposit).Insert(depositData)
+		err = c.Insert(depositData)
 		if err != nil {
 			return err
 		}
 
-		selector := &User{Address: address}
-		var update *User
 		addAmount, _ := amount.FromFloat64(amountF)
 		if !isConfirmed {
-			unconfirmedAmount := user.UnconfirmedAmount.Add(addAmount)
-			update = &User{UnconfirmedAmount: unconfirmedAmount}
+			db.TxProcessExtendTime(session, symbol, txid, 60)
+			err = db.userUnconfirmedAmountAddUpsert(session, user.UserID, user.UserName, addAmount)
 		} else {
-			confirmedAmount := user.Amount.Add(addAmount)
-			update = &User{Amount: confirmedAmount}
+			db.TxProcessStatusDone(session, symbol, txid)
+			err = db.UserAmountAddUpsert(session, user.UserID, user.UserName, addAmount)
 		}
 
-		err = session.DB(db.database).C(colUser).Update(selector, bson.M{
-			"$set": update,
-		})
 		if err != nil {
+			db.TxProcessExtendTime(session, symbol, txid, 60)
 			return err
-		}
-		if !isConfirmed {
-			db.UpsertTxProcess(session, symbol, txid, TxProcessStatusNoChange, 60)
-		} else {
-			db.UpsertTxProcess(session, symbol, txid, TxProcessStatusDone, 0)
 		}
 		return nil
 	}
 
 	if !deposit.IsConfirmed {
 		if isConfirmed {
-			err = session.DB(db.database).C(colDeposit).Update(depositQuery,
+			err = c.Update(depositQuery,
 				bson.M{
 					"$set": &Deposit{IsConfirmed: true},
 				})
 			if err != nil {
 				return err
 			}
-			addAmount, _ := amount.FromFloat64(amountF)
-			confirmedAmount := user.Amount.Add(addAmount)
-			unconfirmedAmount := user.UnconfirmedAmount.Sub(addAmount)
-			err = session.DB(db.database).C(colUser).Update(
-				&User{
-					UserID: user.UserID,
-				},
-				bson.M{"$set": &User{
-					Amount:            confirmedAmount,
-					UnconfirmedAmount: unconfirmedAmount,
-				}})
+			amountConfirmed, _ := amount.FromFloat64(amountF)
+			db.userConfirmedAmount(user.UserID, amountConfirmed)
 			if err != nil {
 				return err
 			}
-			db.UpsertTxProcess(session, symbol, txid, TxProcessStatusDone, 0)
+			db.TxProcessStatusDone(session, symbol, txid)
 		} else {
-			db.UpsertTxProcess(session, symbol, txid, TxProcessStatusNoChange, 60)
+			db.TxProcessExtendTime(session, symbol, txid, 60)
 		}
 	} else {
-		db.UpsertTxProcess(session, symbol, txid, TxProcessStatusDone, 0)
+		db.TxProcessStatusDone(session, symbol, txid)
 	}
 	// fmt.Println("User", user)
 	return nil
@@ -110,7 +126,7 @@ func (db *DB) saveNoOwnerDeposit(sessionUse *mgo.Session, txid, address string, 
 		Address: address,
 		Amount:  amount,
 	}
-	changeInfo, err := session.DB(db.database).C(colNoOwnerDeposit).Upsert(data, data)
+	changeInfo, err := db.cNoOwnerDeposit(session).Upsert(data, data)
 	if err != nil {
 		log.Error("SaveNoOwnerDeposit Error:", err)
 		return

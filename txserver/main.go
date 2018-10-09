@@ -87,6 +87,7 @@ func (p *processPresenter) processFile(filepath string) {
 		return
 	}
 	isSuccess := false
+
 	defer func() {
 		if isSuccess {
 			err := os.Remove(newFilepath)
@@ -101,6 +102,7 @@ func (p *processPresenter) processFile(filepath string) {
 			}
 		}
 	}()
+
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
@@ -111,6 +113,14 @@ func (p *processPresenter) processFile(filepath string) {
 		}
 		symbol := symbolTxID[0]
 		txID := symbolTxID[1]
+		persenter, ok := presenters[symbol]
+		if !ok {
+			continue
+		}
+		err := persenter.db.TxProcessAddNew(symbol, txID, 60)
+		if err != nil {
+			continue
+		}
 		txQueue <- &txInfo{
 			Symbol: symbol,
 			TxID:   txID,
@@ -186,7 +196,7 @@ func (p *processPresenter) txProcessDBStart() {
 				if err != nil {
 					log.Errorf("[%s]TxProcessInfos Error:%s", p.symbol, err)
 				} else {
-					p.txProcessDBInfos()
+					p.txProcessDBInfos(txs)
 				}
 			case <-p.txProcessStop:
 				log.Infof("[%s]Tx process DB stop ", p.symbol)
@@ -197,21 +207,24 @@ func (p *processPresenter) txProcessDBStart() {
 	log.Infof("[%s]Tx Process DB Start", p.symbol)
 }
 
-func (p *processPresenter) txProcessDBInfos() {
-	txs, err := p.db.TxProcessInfos()
-	if err != nil {
-		log.Errorf("[%s]txProcessList Error:%s", p.symbol, err)
+func (p *processPresenter) txProcessDBInfos(txs []*db.TxProcessInfo) {
+	if len(txs) == 0 {
 		return
 	}
 	for _, tx := range txs {
-		err = p.db.UpsertTxProcess(nil, tx.Symbol, tx.TxID, db.TxProcessStatusWait, 30)
+		p.db.TxProcessExtendTime(nil, tx.Symbol, tx.TxID, 30)
 		txQueue <- &txInfo{
 			Symbol: p.symbol,
 			TxID:   tx.TxID,
 		}
 	}
 	if len(txs) > 0 {
-		p.txProcessDBInfos()
+		txs, err := p.db.TxProcessInfos()
+		if err != nil {
+			log.Errorf("[%s]txProcessList Error:%s", p.symbol, err)
+			return
+		}
+		p.txProcessDBInfos(txs)
 	}
 }
 
@@ -235,20 +248,12 @@ func txProcessInfo(tx *txInfo) {
 	symbol := tx.Symbol
 	p, _ := presenters[symbol]
 	txID := tx.TxID
-	isProcessDone, err := p.db.IsTxProcessDone(nil, txID)
+	isProcessDone, err := p.db.TxProcessIsDone(nil, txID)
 	if err != nil {
 		log.Errorf("[%s]txProcessInfo ITPD Error:%s[%s]", symbol, err, txID)
 		return
 	}
-	if !isProcessDone {
-		// this must status wait,txid may be not saved in db
-		err = p.db.UpsertTxProcess(nil, symbol, txID, db.TxProcessStatusWait, 30)
-		if err != nil {
-			log.Errorf("[%s]txProcessInfo SaveTxProcess Error:%s[%s]", symbol, err, txID)
-			return
-		}
-		// log.Infof("[%s]txProcessInfo SaveTxProcess success[%s]", symbol, txID)
-	} else {
+	if isProcessDone {
 		log.Infof("[%s]txProcessInfo TxProcess is process Done [%s]", symbol, txID)
 		return
 	}
@@ -258,8 +263,8 @@ func txProcessInfo(tx *txInfo) {
 		return
 	}
 	if txInfo.Amount <= 0.0 {
-		// log.Infof("[%s]Ingore prcess TX Amount is < 0.0 [%s]", symbol, txID)
-		p.db.UpsertTxProcess(nil, symbol, txID, db.TxProcessStatusDone, 0)
+		log.Infof("[%s]Ingore prcess TX Amount is < 0.0 [%s]", symbol, txID)
+		p.db.TxProcessStatusDone(nil, symbol, txID)
 		return
 	}
 	isConfirmed := txInfo.Confirmations >= p.depositMinConfirmactions
@@ -315,7 +320,7 @@ func initConfig() {
 
 var (
 	cmdFlag    = flag.String("s", "", "send signal to the daemon\nstop - fast shutdown")
-	configFile = flag.String("c", "", "config file path")
+	configFile = flag.String("c", "txserver.json", "config file path")
 )
 
 func main() {
@@ -426,10 +431,16 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	symbol := info.Symbol
-	if _, ok := presenters[symbol]; !ok {
+	persenter, ok := presenters[symbol]
+	if !ok {
 		log.Errorf("Dont had '%s''s config", symbol)
 		fmt.Fprintf(w, "Dont had '%s''s config\n", symbol)
 		return
+	}
+	err = persenter.db.TxProcessAddNew(symbol, info.TxID, 60)
+	if err != nil {
+		log.Errorf("Tx Process Save Error:%s", symbol)
+		fmt.Fprintf(w, "Tx Process Save Error:%s\n", symbol)
 	}
 	txQueue <- &info
 	fmt.Fprintln(w, "accept success")

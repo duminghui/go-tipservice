@@ -93,7 +93,7 @@ func (p *guildConfigPresenter) cmdWithdrawHandler(parts *msgParts) {
 	}
 	withdrawMinAmount, _ := amount.FromFloat64(presenter.coin.Withdraw.Min)
 	minTxFee, _ := amount.FromFloat64(presenter.coin.Withdraw.TxFee)
-	txFeePercent := presenter.coin.Withdraw.TxFeePercent * 100
+	txFeePercent := presenter.coin.Withdraw.TxFeePercent
 	withdrawUsageInfo := &cmdWithdrawUserInfo{
 		cmdUsageInfo: cmdUsageInfo{
 			tmplName:        "withdrawUsage",
@@ -104,7 +104,7 @@ func (p *guildConfigPresenter) cmdWithdrawHandler(parts *msgParts) {
 			Symbol:          string(symbol),
 		},
 		WithdrawMin:  withdrawMinAmount,
-		TxFeePercent: txFeePercent,
+		TxFeePercent: txFeePercent * 100,
 		TxFeeMin:     minTxFee,
 	}
 	cmdPartErrMsg := withdrawUsageInfo.String()
@@ -200,12 +200,13 @@ func (p *guildConfigPresenter) cmdWithdrawHandler(parts *msgParts) {
 		"TxExpUrl":    presenter.coin.TxExplorerURL,
 		"TxID":        withdrawTxID,
 	})
+	username := parts.m.Author.Username
 	parts.channelMessageSend(msg)
-	err = presenter.db.UserAmountUpsert(userID, parts.m.Author.Username, -withdrawAmount)
+	err = presenter.db.UserAmountSub(nil, userID, username, withdrawAmountProxy)
 	if err != nil {
 		log.Errorf("[%s] Withdraw Amount Update Error:%s[%s][%s][%s][%.8f]", symbol, err, userID, parts.m.Author.Username, withdrawTxID, withdrawAmount)
 	}
-	presenter.db.SaveWithdraw(userID, address, withdrawTxID, withdrawAmount)
+	presenter.db.SaveWithdraw(userID, username, address, withdrawTxID, withdrawAmount)
 }
 
 func (p *guildConfigPresenter) cmdBalHandler(parts *msgParts) {
@@ -281,7 +282,7 @@ func (p *guildConfigPresenter) cmdPieHelperHandler(parts *msgParts) {
 	pieMinAmount, _ := amount.FromFloat64(coinConfig.Pie.Min)
 	withdrawMinAmount, _ := amount.FromFloat64(coinConfig.Withdraw.Min)
 	minTxFee, _ := amount.FromFloat64(coinConfig.Withdraw.TxFee)
-	txFeePercent := coinConfig.Withdraw.TxFeePercent * 100
+	txFeePercent := coinConfig.Withdraw.TxFeePercent
 	cmdMsg := &cmdHelpUsageInfo{
 		cmdUsageInfo: cmdUsageInfo{
 			tmplName:        "helpUsage",
@@ -296,7 +297,7 @@ func (p *guildConfigPresenter) cmdPieHelperHandler(parts *msgParts) {
 		},
 		cmdWithdrawUserInfo: cmdWithdrawUserInfo{
 			WithdrawMin:  withdrawMinAmount,
-			TxFeePercent: txFeePercent,
+			TxFeePercent: txFeePercent * 100,
 			TxFeeMin:     minTxFee,
 		},
 		IsManager: isManager,
@@ -462,7 +463,7 @@ func (p *guildConfigPresenter) cmdPieHandler(parts *msgParts) {
 		return
 	}
 
-	err = presenter.db.UserAmountUpsert(userID, parts.m.Author.Username, -sendAmount.Float64())
+	err = presenter.db.UserAmountSub(nil, userID, parts.m.Author.Username, sendAmount)
 	if err != nil {
 		log.Errorf("Pie modify sender amount error:%s", err)
 		return
@@ -473,7 +474,7 @@ func (p *guildConfigPresenter) cmdPieHandler(parts *msgParts) {
 		//msg index
 		index := int(math.Floor(float64(i) / eachMsgReceiverNum))
 		receiversMap[index] = append(receiversMap[index], receiver.Mention())
-		err = presenter.db.UserAmountUpsert(receiver.ID, receiver.Username, amountEach.Float64())
+		err = presenter.db.UserAmountAddUpsert(nil, receiver.ID, receiver.Username, amountEach)
 		if err != nil {
 			log.Errorf("Pie modify receiver amount error:%s", err)
 		}
