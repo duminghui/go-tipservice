@@ -1,7 +1,9 @@
 {
     "discord":{
         "token":"",
-        "supermanagerids":""
+        "supermanagerids":"",
+        "prefix":"",
+        "eachPieMsgReceiversLimit":6
     },
     "workDir":"./",
     "pidFile":"piebot.pid",

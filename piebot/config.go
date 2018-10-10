@@ -10,9 +10,10 @@ import (
 )
 
 type Discord struct {
-	Token           string `json:"token"`
-	SuperManagerIDs string `json:"supermanagerids"`
-	Prefix          string `json:"prefix"`
+	Token                    string `json:"token"`
+	SuperManagerIDs          string `json:"supermanagerids"`
+	Prefix                   string `json:"prefix"`
+	EachPieMsgReceiversLimit int    `json:"eachPieMsgReceiversLimit"`
 }
 
 type PieBotConfig struct {

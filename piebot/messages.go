@@ -369,8 +369,6 @@ func (p *guildConfigPresenter) pieReceivers(s *discordgo.Session, guild *discord
 	return receivers, nil
 }
 
-const eachMsgReceiverNum = 30
-
 func (p *guildConfigPresenter) cmdPieHandler(parts *msgParts) {
 	userID := parts.m.Author.ID
 	userMention := parts.m.Author.Mention()
@@ -481,10 +479,11 @@ func (p *guildConfigPresenter) cmdPieHandler(parts *msgParts) {
 		return
 	}
 
+	eachMsgReceiverNum := piebotConfig.Discord.EachPieMsgReceiversLimit
 	receiversMap := make(map[int][]string)
 	for i, receiver := range receivers {
 		//msg index
-		index := int(math.Floor(float64(i) / eachMsgReceiverNum))
+		index := int(math.Floor(float64(i) / float64(eachMsgReceiverNum)))
 		receiversMap[index] = append(receiversMap[index], receiver.Mention())
 		err = presenter.db.UserAmountAddUpsert(nil, receiver.ID, receiver.Username, amountEach)
 		if err != nil {
