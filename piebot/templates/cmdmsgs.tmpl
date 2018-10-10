@@ -97,10 +97,11 @@ Unconfirmed amount: {{.UnconfirmedAmount}} {{.Symbol}}```
   **Active channels:** {{if .Channels}}{{join .Channels " "}}{{else}}All channel{{end}}
 {{- end}}
 {{template "pieMainManagerList" .}}
+{{template "pieMainExcludeList" .}}
 {{- end}}
 
 {{define "pieMainPrefixErr" -}}
-{{.}} prefix `?` is reserved for the bot
+{{.UserMention}} prefix `{{.BotPrefix}}` is reserved for the bot
 {{- end}}
 
 {{define "pieMainPrefixSymbolNotExistErr" -}}
@@ -119,4 +120,14 @@ Unconfirmed amount: {{.UnconfirmedAmount}} {{.Symbol}}```
 {{define "pieMainListInfo" -}}
 {{.UserMention}} configureable coin's symbol:
 -- {{join .Symbols ", "}}
-{{end}}
+{{- end}}
+
+{{define "pieMainExcludeList" -}}
+***Exclude Roles:***
+  - {{join .ExcludeRoles ", "}}
+{{- end}}
+
+{{define "pieMainExcludeInfo" -}}
+{{.UserMention}} now server exclude roles:
+{{template "pieMainExcludeList" .}}
+{{- end}}

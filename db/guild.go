@@ -7,27 +7,121 @@ import (
 )
 
 const (
-	colGuildManager = "guildmanager"
+	colGuildManager = "guildconfig"
 	dbGuildConfig   = "guild_config"
 )
 
-type GuildManager struct {
-	GuildID      string   `bson:"guildid,omitempty"`
+type GuildConfig struct {
+	GuildID      string   `bson:"guildid"`
+	GuildName    string   `bson:"guildname"`
+	Managers     []string `bson:"managers"`
+	ManagerRoles []string `bson:"managerroles"`
+	ExcludeRoles []string `bson:"excluderoles"`
+}
+
+type guildConfigSelector struct {
+	GuildID string `bson:"guildid"`
+}
+
+type guildConfigManagers struct {
+	GuildName    string   `bson:"guildname"`
 	Managers     []string `bson:"managers"`
 	ManagerRoles []string `bson:"managerroles"`
 }
 
-func GuildManagerRemove(guildID string, users, roles []string) error {
+type guildConfigExcludeRoles struct {
+	GuildName    string   `bson:"guildname"`
+	ExcludeRoles []string `bson:"excluderoles"`
+}
+
+func GuildConfigExcludeRolesRemove(guildID, guildName string, excluderoles []string) error {
 	session := mgoSession.Clone()
 	defer session.Close()
-	col := session.DB(dbGuildConfig).C(colGuildManager)
-	selector := bson.M{
-		"guildid": guildID,
-	}
-	manager := new(GuildManager)
-	err := col.Find(selector).One(manager)
+	manager, err := GuildConfigManagerByGuildID(session, guildID)
 	if err != nil {
 		return err
+	}
+	if manager == nil {
+		return nil
+	}
+	if len(manager.ExcludeRoles) == 0 {
+		return nil
+	}
+	rolesMap := make(map[string]int)
+	for _, role := range manager.ExcludeRoles {
+		rolesMap[role] = 1
+	}
+	for _, role := range excluderoles {
+		delete(rolesMap, role)
+	}
+	finalRoles := make([]string, 0)
+	for k := range rolesMap {
+		finalRoles = append(finalRoles, k)
+	}
+	selector := &guildConfigSelector{
+		GuildID: guildID,
+	}
+	data := bson.M{
+		"$set": &guildConfigExcludeRoles{
+			GuildName:    guildName,
+			ExcludeRoles: finalRoles,
+		},
+	}
+	col := session.DB(dbGuildConfig).C(colGuildManager)
+	err = col.Update(selector, data)
+	return err
+}
+
+func GuildConfigExcludeRolesAdd(guildID, guildName string, excluderoles []string) error {
+	session := mgoSession.Clone()
+	defer session.Close()
+	manager, err := GuildConfigManagerByGuildID(session, guildID)
+	if err != nil {
+		return err
+	}
+	col := session.DB(dbGuildConfig).C(colGuildManager)
+	if manager == nil {
+		data := &GuildConfig{
+			GuildID:      guildID,
+			GuildName:    guildName,
+			ExcludeRoles: excluderoles,
+		}
+		err := col.Insert(data)
+		return err
+	}
+	rolesMap := make(map[string]int)
+	for _, role := range manager.ExcludeRoles {
+		rolesMap[role] = 1
+	}
+	for _, role := range excluderoles {
+		rolesMap[role] = 1
+	}
+	finalRoles := make([]string, 0)
+	for k := range rolesMap {
+		finalRoles = append(finalRoles, k)
+	}
+	selector := &guildConfigSelector{
+		GuildID: guildID,
+	}
+	data := bson.M{
+		"$set": &guildConfigExcludeRoles{
+			GuildName:    guildName,
+			ExcludeRoles: finalRoles,
+		},
+	}
+	err = col.Update(selector, data)
+	return err
+}
+
+func GuildConfigManagerRemove(guildID, guildName string, users, roles []string) error {
+	session := mgoSession.Clone()
+	defer session.Close()
+	manager, err := GuildConfigManagerByGuildID(session, guildID)
+	if err != nil {
+		return err
+	}
+	if manager == nil {
+		return nil
 	}
 	if len(manager.Managers) == 0 && len(manager.ManagerRoles) == 0 {
 		return nil
@@ -59,30 +153,32 @@ func GuildManagerRemove(guildID string, users, roles []string) error {
 		}
 	}
 	data := bson.M{
-		"$set": &GuildManager{
+		"$set": &guildConfigManagers{
+			GuildName:    guildName,
 			Managers:     managers,
 			ManagerRoles: updateRoles,
 		},
 	}
+	selector := &guildConfigSelector{
+		GuildID: guildID,
+	}
+	col := session.DB(dbGuildConfig).C(colGuildManager)
 	err = col.Update(selector, data)
 	return err
 }
 
-func GuildManagerAdd(guildID string, users, roles []string) error {
+func GuildConfigManagerAdd(guildID, guildName string, users, roles []string) error {
 	session := mgoSession.Clone()
 	defer session.Close()
-	col := session.DB(dbGuildConfig).C(colGuildManager)
-	selector := bson.M{
-		"guildid": guildID,
-	}
-	manager := new(GuildManager)
-	err := col.Find(selector).One(manager)
-	if err != nil && err != mgo.ErrNotFound {
+	manager, err := GuildConfigManagerByGuildID(session, guildID)
+	if err != nil {
 		return err
 	}
-	if err != nil && err == mgo.ErrNotFound {
-		data := &GuildManager{
+	col := session.DB(dbGuildConfig).C(colGuildManager)
+	if manager == nil {
+		data := &GuildConfig{
 			GuildID:      guildID,
+			GuildName:    guildName,
 			Managers:     users,
 			ManagerRoles: roles,
 		}
@@ -90,21 +186,17 @@ func GuildManagerAdd(guildID string, users, roles []string) error {
 		return err
 	}
 	//Update
-	managers := make([]string, len(manager.Managers))
-	copy(managers, manager.Managers)
+	managerMap := make(map[string]int)
 	for _, user := range users {
-		add := true
-		for _, existUser := range manager.Managers {
-			if user == existUser {
-				add = false
-				break
-			}
-		}
-		if add {
-			managers = append(managers, user)
-		}
+		managerMap[user] = 1
 	}
-	addRoles := make([]string, 0)
+	for _, user := range manager.Managers {
+		managerMap[user] = 1
+	}
+	managers := make([]string, 0)
+	for k := range managerMap {
+		managers = append(managers, k)
+	}
 	roleMap := make(map[string]int)
 	for _, role := range roles {
 		roleMap[role] = 1
@@ -112,63 +204,80 @@ func GuildManagerAdd(guildID string, users, roles []string) error {
 	for _, role := range manager.ManagerRoles {
 		roleMap[role] = 1
 	}
+	addRoles := make([]string, 0)
 	for k := range roleMap {
 		addRoles = append(addRoles, k)
 	}
 	data := bson.M{
-		"$set": &GuildManager{
+		"$set": &guildConfigManagers{
+			GuildName:    guildName,
 			Managers:     managers,
 			ManagerRoles: addRoles,
 		},
+	}
+	selector := &guildConfigSelector{
+		GuildID: guildID,
 	}
 	err = col.Update(selector, data)
 	return err
 }
 
-func GuildManagerList() ([]*GuildManager, error) {
+func GuildConfigManagerList() ([]*GuildConfig, error) {
 	session := mgoSession.Clone()
 	defer session.Close()
 	col := session.DB(dbGuildConfig).C(colGuildManager)
-	guildManagers := make([]*GuildManager, 0)
+	guildManagers := make([]*GuildConfig, 0)
 	err := col.Find(nil).All(&guildManagers)
 	return guildManagers, err
 }
 
-func GuildManagerByGuildID(guildID string) (*GuildManager, error) {
-	session := mgoSession.Clone()
-	defer session.Close()
+func GuildConfigManagerByGuildID(sessionIn *mgo.Session, guildID string) (*GuildConfig, error) {
+	session, closer := session(sessionIn)
+	defer closer()
 	col := session.DB(dbGuildConfig).C(colGuildManager)
-	selector := bson.M{
-		"guildid": guildID,
+	selector := &guildConfigSelector{
+		GuildID: guildID,
 	}
-	manager := new(GuildManager)
+	manager := new(GuildConfig)
 	err := col.Find(selector).One(manager)
-	return manager, err
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return manager, nil
 }
 
 const colGuildCoinConfig = "guildcoinconfig"
 
-type GuildCoinConfig struct {
-	GuildID    string   `bson:"guildid,omitempty"`
-	Symbol     string   `bson:"symbol,omitempty"`
-	CmdPrefix  string   `bson:"cmdprefix,omitempty"`
-	ChannelIDs []string `bson:"channelids,omitempty"`
+type guildCoinConfigSelector struct {
+	GuildID string `bson:"guildid"`
+	Symbol  string `bson:"symbol"`
 }
 
-type guildCoinConfigChannel struct {
+type GuildCoinConfig struct {
+	GuildID    string   `bson:"guildid"`
+	GuildName  string   `bson:"guildname"`
+	Symbol     string   `bson:"symbol"`
+	CmdPrefix  string   `bson:"cmdprefix"`
 	ChannelIDs []string `bson:"channelids"`
 }
 
-func GuildCoinChannelRemove(guildID, symbol string, channels []string) error {
+type guildCoinConfigCmdPrefix struct {
+	GuildName string `bson:"guildname"`
+	CmdPrefix string `bson:"cmdprefix"`
+}
+
+type guildCoinConfigChannel struct {
+	GuildName  string   `bson:"guildname"`
+	ChannelIDs []string `bson:"channelids"`
+}
+
+func GuildCoinChannelRemove(guildID, guildName, symbol string, channels []string) error {
 	session := mgoSession.Clone()
 	defer session.Close()
-	col := session.DB(dbGuildConfig).C(colGuildCoinConfig)
-	selector := &GuildCoinConfig{
-		GuildID: guildID,
-		Symbol:  symbol,
-	}
-	coinConfig := new(GuildCoinConfig)
-	err := col.Find(selector).One(coinConfig)
+	coinConfig, err := GuildCoinConfigBySymbol(session, guildID, symbol)
 	if err != nil {
 		return err
 	}
@@ -183,25 +292,25 @@ func GuildCoinChannelRemove(guildID, symbol string, channels []string) error {
 	for k := range channelMap {
 		addChannels = append(addChannels, k)
 	}
+	selector := &guildCoinConfigSelector{
+		GuildID: guildID,
+		Symbol:  symbol,
+	}
 	data := bson.M{
 		"$set": &guildCoinConfigChannel{
+			GuildName:  guildName,
 			ChannelIDs: addChannels,
 		},
 	}
+	col := session.DB(dbGuildConfig).C(colGuildCoinConfig)
 	err = col.Update(selector, data)
 	return err
 }
 
-func GuildCoinChannelAdd(guildID, symbol string, channels []string) error {
+func GuildCoinChannelAdd(guildID, guildName, symbol string, channels []string) error {
 	session := mgoSession.Clone()
 	defer session.Close()
-	col := session.DB(dbGuildConfig).C(colGuildCoinConfig)
-	selector := &GuildCoinConfig{
-		GuildID: guildID,
-		Symbol:  symbol,
-	}
-	coinConfig := new(GuildCoinConfig)
-	err := col.Find(selector).One(coinConfig)
+	coinConfig, err := GuildCoinConfigBySymbol(session, guildID, symbol)
 	if err != nil {
 		return err
 	}
@@ -216,35 +325,43 @@ func GuildCoinChannelAdd(guildID, symbol string, channels []string) error {
 	for k := range addChannelMap {
 		addChannels = append(addChannels, k)
 	}
-	data := bson.M{
-		"$set": &GuildCoinConfig{
-			ChannelIDs: addChannels,
-		},
-	}
-	err = col.Update(selector, data)
-	return err
-}
-
-func GuildCoinUpdateCmdPrefix(guildID, symbol string, cmdPrefix string) error {
-	session := mgoSession.Clone()
-	defer session.Close()
-	col := session.DB(dbGuildConfig).C(colGuildCoinConfig)
-	selector := &GuildCoinConfig{
+	selector := &guildCoinConfigSelector{
 		GuildID: guildID,
 		Symbol:  symbol,
 	}
 	data := bson.M{
-		"$set": &GuildCoinConfig{
+		"$set": &guildCoinConfigChannel{
+			GuildName:  guildName,
+			ChannelIDs: addChannels,
+		},
+	}
+	col := session.DB(dbGuildConfig).C(colGuildCoinConfig)
+	err = col.Update(selector, data)
+	return err
+}
+
+func GuildCoinUpdateCmdPrefix(guildID, guildName, symbol string, cmdPrefix string) error {
+	session := mgoSession.Clone()
+	defer session.Close()
+	col := session.DB(dbGuildConfig).C(colGuildCoinConfig)
+	selector := &guildCoinConfigSelector{
+		GuildID: guildID,
+		Symbol:  symbol,
+	}
+	data := bson.M{
+		"$set": &guildCoinConfigCmdPrefix{
+			GuildName: guildName,
 			CmdPrefix: cmdPrefix,
 		},
 	}
 	err := col.Update(selector, data)
 	if err != nil && err != mgo.ErrNotFound {
-		return nil
+		return err
 	}
 	if err != nil && err == mgo.ErrNotFound {
 		data := &GuildCoinConfig{
 			GuildID:   guildID,
+			GuildName: guildName,
 			Symbol:    symbol,
 			CmdPrefix: cmdPrefix,
 		}
@@ -263,15 +380,21 @@ func GuildCoinConfigList() ([]*GuildCoinConfig, error) {
 	return guildConfigs, err
 }
 
-func GuildCoinConfigBySymbol(guildID, symbol string) (*GuildCoinConfig, error) {
-	session := mgoSession.Clone()
-	defer session.Close()
+func GuildCoinConfigBySymbol(sessionIn *mgo.Session, guildID, symbol string) (*GuildCoinConfig, error) {
+	session, closer := session(sessionIn)
+	defer closer()
 	col := session.DB(dbGuildConfig).C(colGuildCoinConfig)
-	guildConfig := new(GuildCoinConfig)
-	selector := &GuildCoinConfig{
+	guildCoinConfig := new(GuildCoinConfig)
+	selector := &guildCoinConfigSelector{
 		GuildID: guildID,
 		Symbol:  symbol,
 	}
-	err := col.Find(selector).One(guildConfig)
-	return guildConfig, err
+	err := col.Find(selector).One(guildCoinConfig)
+	if err != nil && err != mgo.ErrNotFound {
+		return nil, err
+	}
+	if err != nil && err == mgo.ErrNotFound {
+		return nil, nil
+	}
+	return guildCoinConfig, nil
 }

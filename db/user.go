@@ -23,20 +23,39 @@ type User struct {
 	UnconfirmedAmountF float64       `bson:"unconfirmed_amount_f"`
 }
 
-type UserOption struct {
-	UserID             string        `bson:"user_id,omitempty"`
-	UserName           string        `bson:"user_name,omitempty"`
-	Address            string        `bson:"address,omitempty"`
-	Amount             amount.Amount `bson:"amount,omitempty"`
-	AmountF            float64       `bson:"amount_f,omitempty"`
-	UnconfirmedAmount  amount.Amount `bson:"unconfirmed_amount,omitempty"`
-	UnconfirmedAmountF float64       `bson:"unconfirmed_amount_f,omitempty"`
+type userSelector struct {
+	UserID  string `bson:"user_id,omitempty"`
+	Address string `bson:"address,omitempty"`
+}
+
+type userAddress struct {
+	UserName string `bson:"user_name"`
+	Address  string `bson:"address"`
+}
+
+type userAmount struct {
+	UserName string        `bson:"user_name"`
+	Amount   amount.Amount `bson:"amount"`
+	AmountF  float64       `bson:"amount_f"`
+}
+
+type userUnconfirmedAmount struct {
+	UserName           string        `bson:"user_name"`
+	UnconfirmedAmount  amount.Amount `bson:"unconfirmed_amount"`
+	UnconfirmedAmountF float64       `bson:"unconfirmed_amount_f"`
+}
+
+type userAllAmount struct {
+	Amount             amount.Amount `bson:"amount"`
+	AmountF            float64       `bson:"amount_f"`
+	UnconfirmedAmount  amount.Amount `bson:"unconfirmed_amount"`
+	UnconfirmedAmountF float64       `bson:"unconfirmed_amount_f"`
 }
 
 func (db *DB) userByAddress(sessionIn *mgo.Session, address string) (*User, error) {
 	session, closer := session(sessionIn)
 	defer closer()
-	query := db.cUser(session).Find(&UserOption{Address: address})
+	query := db.cUser(session).Find(&userSelector{Address: address})
 	user := new(User)
 	err := query.One(user)
 	if err != nil {
@@ -52,7 +71,7 @@ func (db *DB) userByAddress(sessionIn *mgo.Session, address string) (*User, erro
 func (db *DB) UserByID(sessionIn *mgo.Session, userID string) (*User, error) {
 	session, closer := session(sessionIn)
 	defer closer()
-	query := db.cUser(session).Find(&UserOption{UserID: userID})
+	query := db.cUser(session).Find(&userSelector{UserID: userID})
 	user := new(User)
 	err := query.One(user)
 	if err != nil {
@@ -78,11 +97,11 @@ func (db *DB) UserAmountSub(sessionIn *mgo.Session, userID, userName string, amo
 	}
 	col := db.cUser(session)
 	confirmedAmount := user.Amount.Sub(amountSub)
-	selector := &UserOption{
+	selector := &userSelector{
 		UserID: userID,
 	}
 	data := bson.M{
-		"$set": &UserOption{
+		"$set": &userAmount{
 			UserName: userName,
 			Amount:   confirmedAmount,
 			AmountF:  confirmedAmount.Float64(),
@@ -124,13 +143,13 @@ func (db *DB) UserAmountAddUpsert(sessionIn *mgo.Session, userID, userName strin
 
 	confirmedAmount := user.Amount.Add(amountAdd)
 	data := bson.M{
-		"$set": &UserOption{
+		"$set": &userAmount{
 			UserName: userName,
 			Amount:   confirmedAmount,
 			AmountF:  confirmedAmount.Float64(),
 		},
 	}
-	selector := &UserOption{
+	selector := &userSelector{
 		UserID: userID,
 	}
 	err = col.Update(selector, data)
@@ -169,13 +188,13 @@ func (db *DB) userUnconfirmedAmountAddUpsert(sessionIn *mgo.Session, userID, use
 
 	unconfirmedAmount := user.UnconfirmedAmount.Add(amountAdd)
 	data := bson.M{
-		"$set": &UserOption{
+		"$set": &userUnconfirmedAmount{
 			UserName:           userName,
 			UnconfirmedAmount:  unconfirmedAmount,
 			UnconfirmedAmountF: unconfirmedAmount.Float64(),
 		},
 	}
-	selector := &UserOption{
+	selector := &userSelector{
 		UserID: userID,
 	}
 	err = col.Update(selector, data)
@@ -200,10 +219,10 @@ func (db *DB) userConfirmedAmount(userID string, amountCfm amount.Amount) error 
 	unconfirmedAmount := user.UnconfirmedAmount.Sub(amountCfm)
 	col := db.cUser(session)
 	err = col.Update(
-		&UserOption{
+		&userSelector{
 			UserID: user.UserID,
 		},
-		bson.M{"$set": &UserOption{
+		bson.M{"$set": &userAllAmount{
 			Amount:             confirmedAmount,
 			AmountF:            confirmedAmount.Float64(),
 			UnconfirmedAmount:  unconfirmedAmount,
@@ -235,12 +254,13 @@ func (db *DB) UserAddressUpsert(userID, userName, address string, isInsert bool)
 			return err
 		}
 	} else {
-		selector := &UserOption{
+		selector := &userSelector{
 			UserID: userID,
 		}
 		data := bson.M{
-			"$set": &UserOption{
-				Address: address,
+			"$set": &userAddress{
+				UserName: userName,
+				Address:  address,
 			},
 		}
 		err := col.Update(selector, data)

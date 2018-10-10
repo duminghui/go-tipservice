@@ -2,6 +2,7 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -307,6 +308,8 @@ func (p *guildConfigPresenter) cmdPieHelperHandler(parts *msgParts) {
 
 func (p *guildConfigPresenter) pieReceivers(s *discordgo.Session, guild *discordgo.Guild, channelID, pieUserID string, isEveryone bool, isNeedOnline bool, roles []string, users []*discordgo.User) ([]*discordgo.User, error) {
 	receivers := []*discordgo.User{}
+	rolesStr := strings.Join(roles, "|")
+	excludeRoles := strings.Join(p.excludeRoles, "|")
 	for _, member := range guild.Members {
 		userID := member.User.ID
 		switch {
@@ -329,16 +332,25 @@ func (p *guildConfigPresenter) pieReceivers(s *discordgo.Session, guild *discord
 		if err == nil && presence.Status == discordgo.StatusOnline {
 			isOnline = true
 		}
+		isInExcludeRoles := false
+		for _, role := range member.Roles {
+			if strings.Contains(excludeRoles, role) {
+				isInExcludeRoles = true
+				break
+			}
+		}
 		isAdd := false
+		//everyone
 		if isEveryone && !isNeedOnline {
-			isAdd = true
+			//everyone
+			isAdd = !isInExcludeRoles
 		} else if isEveryone && isOnline {
-			isAdd = true
+			//here
+			isAdd = !isInExcludeRoles
 		} else if len(roles) > 0 {
-			rolesStr := strings.Join(roles, "|")
 			for _, role := range member.Roles {
 				if strings.Contains(rolesStr, role) {
-					isAdd = true
+					isAdd = !isInExcludeRoles
 					break
 				}
 			}
@@ -529,6 +541,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if !ok {
 		gcp = guildConfigPresenters.initGuildConfigPresenter(channel.GuildID)
 	}
+	gcp.guildName = guild.Name
 	msgParts := &msgParts{
 		s:        s,
 		m:        m,
@@ -538,7 +551,8 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 	isManager := gcp.isBotManager(s, guild, m.Author.ID)
 	msgParts.isManager = isManager
-	if cntParts[0] == "?pie" {
+	botMainCmd := fmt.Sprintf("%spie", piebotConfig.Discord.Prefix)
+	if cntParts[0] == botMainCmd {
 		if !isManager {
 			return
 		}

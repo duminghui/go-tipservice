@@ -38,10 +38,12 @@ type prefixWrap string
 
 type guildConfigPresenter struct {
 	guildID      string
+	guildName    string
 	prefixSymbol map[prefixWrap]symbolWrap
 	gccMap       map[symbolWrap]*GuildCoinConfig
 	managers     []string
 	managerRoles []string
+	excludeRoles []string
 	// symbolPrefixMap map[symbolWrap]prefixWrap
 	// key symbol
 	// guildCoinConfig map[symbolWrap]GuildCoinConfig
@@ -90,7 +92,7 @@ func initGuildConfig() {
 		p.prefixSymbol[gcc.prefix] = gcc.symbol
 		p.gccMap[symbolWrap(v.Symbol)] = gcc
 	}
-	guildManagerList, err := db.GuildManagerList()
+	guildManagerList, err := db.GuildConfigManagerList()
 	if err != nil {
 		return
 	}
@@ -132,14 +134,14 @@ func (p *guildConfigPresenter) symbolByPrefix(pfx prefixWrap) (symbolWrap, error
 }
 
 func (p *guildConfigPresenter) updatePrefix(sbl symbolWrap, oldPrefix, newPrefix prefixWrap) error {
-	err := db.GuildCoinUpdateCmdPrefix(p.guildID, string(sbl), string(newPrefix))
+	err := db.GuildCoinUpdateCmdPrefix(p.guildID, p.guildName, string(sbl), string(newPrefix))
 	if err != nil {
 		log.Errorf("updatePrefix err:%s,%s,%s,%s", err, p.guildID, sbl, newPrefix)
 		return err
 	}
 	delete(p.prefixSymbol, oldPrefix)
 	p.prefixSymbol[newPrefix] = sbl
-	gccDB, err := db.GuildCoinConfigBySymbol(p.guildID, string(sbl))
+	gccDB, err := db.GuildCoinConfigBySymbol(nil, p.guildID, string(sbl))
 	if err != nil {
 		log.Errorf("update prefix GuildCoinConfigBySymbol error:%s,%s:%s", err, p.guildID, sbl)
 		return err
@@ -156,15 +158,15 @@ func (p *guildConfigPresenter) updatePrefix(sbl symbolWrap, oldPrefix, newPrefix
 func (p *guildConfigPresenter) guildChannelUpdate(sbl symbolWrap, operator string, channels []string) ([]string, error) {
 	var err error
 	if operator == "add" {
-		err = db.GuildCoinChannelAdd(p.guildID, string(sbl), channels)
+		err = db.GuildCoinChannelAdd(p.guildID, p.guildName, string(sbl), channels)
 	} else {
-		err = db.GuildCoinChannelRemove(p.guildID, string(sbl), channels)
+		err = db.GuildCoinChannelRemove(p.guildID, p.guildName, string(sbl), channels)
 	}
 	if err != nil {
 		log.Errorf("GuildChannelUpdate Error:%s,%s:%s:%s", err, p.guildID, sbl, operator)
 		return nil, err
 	}
-	gccDB, err := db.GuildCoinConfigBySymbol(p.guildID, string(sbl))
+	gccDB, err := db.GuildCoinConfigBySymbol(nil, p.guildID, string(sbl))
 	if err != nil {
 		log.Errorf("update channel GuildCoinConfigBySymbol error:%s,%s:%s", err, p.guildID, sbl)
 		return nil, err
@@ -181,15 +183,15 @@ func (p *guildConfigPresenter) guildChannelUpdate(sbl symbolWrap, operator strin
 func (p *guildConfigPresenter) guildManagerUpdate(operator string, users, roles []string) ([]string, []string, error) {
 	var err error
 	if operator == "add" {
-		err = db.GuildManagerAdd(p.guildID, users, roles)
+		err = db.GuildConfigManagerAdd(p.guildID, p.guildName, users, roles)
 	} else {
-		err = db.GuildManagerRemove(p.guildID, users, roles)
+		err = db.GuildConfigManagerRemove(p.guildID, p.guildName, users, roles)
 	}
 	if err != nil {
 		log.Errorf("guildManagerUpdate Error:%s,%s:%s", err, p.guildID, operator)
 		return nil, nil, err
 	}
-	gmDB, err := db.GuildManagerByGuildID(p.guildID)
+	gmDB, err := db.GuildConfigManagerByGuildID(nil, p.guildID)
 	if err != nil {
 		log.Errorf("guildManagerUpdate read from db Error:%s,%s", err, p.guildID)
 		return nil, nil, err
@@ -197,4 +199,24 @@ func (p *guildConfigPresenter) guildManagerUpdate(operator string, users, roles 
 	p.managers = gmDB.Managers
 	p.managerRoles = gmDB.ManagerRoles
 	return gmDB.Managers, gmDB.ManagerRoles, nil
+}
+
+func (p *guildConfigPresenter) guildExcludeUpdate(operator string, roles []string) ([]string, error) {
+	var err error
+	if operator == "add" {
+		err = db.GuildConfigExcludeRolesAdd(p.guildID, p.guildName, roles)
+	} else {
+		err = db.GuildConfigExcludeRolesRemove(p.guildID, p.guildName, roles)
+	}
+	if err != nil {
+		log.Errorf("guildExcludeUpdate Error:%s,%s:%s", err, p.guildID, operator)
+		return nil, err
+	}
+	gmDB, err := db.GuildConfigManagerByGuildID(nil, p.guildID)
+	if err != nil {
+		log.Errorf("guildExcludeUpdate read from db Error:%s,%s", err, p.guildID)
+		return nil, err
+	}
+	p.excludeRoles = gmDB.ExcludeRoles
+	return gmDB.ExcludeRoles, nil
 }

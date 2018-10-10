@@ -2,7 +2,10 @@
 package db
 
 import (
+	"time"
+
 	"github.com/duminghui/go-tipservice/amount"
+	"github.com/duminghui/go-util/utime"
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 )
@@ -26,6 +29,7 @@ type Deposit struct {
 	Amount      float64 `bson:"amount,omitempty"`
 	TxID        string  `bson:"txid,omitempty"`
 	Address     string  `bson:"addresses,omitempty"`
+	Time        string  `bson:"time,omitempty"`
 	IsConfirmed bool    `bson:"isConfirmed,omitempty"`
 }
 
@@ -33,6 +37,7 @@ type NoOwnerDeposit struct {
 	TxID    string  `bson:"txid"`
 	Address string  `bson:"address"`
 	Amount  float64 `bson:"amount"`
+	Time    string  `bson:"time"`
 }
 
 func (db *DB) cNoOwnerDeposit(session *mgo.Session) *mgo.Collection {
@@ -70,6 +75,7 @@ func (db *DB) Deposit(address, txid string, amountF float64, isConfirmed bool) e
 			Amount:      amountF,
 			TxID:        txid,
 			Address:     address,
+			Time:        utime.FormatTimeStrUTC(time.Now()),
 			IsConfirmed: isConfirmed,
 		}
 		err = c.Insert(depositData)
@@ -125,6 +131,7 @@ func (db *DB) saveNoOwnerDeposit(sessionUse *mgo.Session, txid, address string, 
 		TxID:    txid,
 		Address: address,
 		Amount:  amount,
+		Time:    utime.FormatTimeStrUTC(time.Now()),
 	}
 	changeInfo, err := db.cNoOwnerDeposit(session).Upsert(data, data)
 	if err != nil {

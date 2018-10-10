@@ -24,9 +24,50 @@ func (p *guildConfigPresenter) cmdMainPie(parts *msgParts) {
 		p.cmdPieMainManagerHandler(parts)
 	case cntParts[0] == "info":
 		p.cmdPieMainInfoHandler(parts)
+	case cntParts[0] == "exclude":
+		parts.contents = cntParts[1:]
+		p.cmdPieMainExcludeHandler(parts)
 	default:
 		p.cmdPieMainHelpHandler(parts)
 	}
+}
+
+func (p *guildConfigPresenter) cmdPieMainExcludeHandler(parts *msgParts) {
+	userMention := parts.m.Author.Mention()
+	msg := msgFromTmpl("pieMainExcludeUsage", tmplValueMap{
+		"UserMention":     userMention,
+		"IsShowUsageHint": true,
+		"CmdName":         "manager",
+		"BotPrefix":       piebotConfig.Discord.Prefix,
+	})
+	if len(parts.contents) < 2 {
+		parts.channelMessageSend(msg)
+		return
+	}
+	operator := parts.contents[0]
+	if operator != "add" && operator != "remove" {
+		parts.channelMessageSend(msg)
+		return
+	}
+	if len(parts.m.MentionRoles) == 0 {
+		parts.channelMessageSend(msg)
+		return
+	}
+	finalRoles, err := p.guildExcludeUpdate(operator, parts.m.MentionRoles)
+	if err != nil {
+		log.Error("cmdPieMainExcludeHandler Error:", err)
+		return
+	}
+	roles := make([]string, 0, len(finalRoles))
+	for _, roleID := range finalRoles {
+		role, _ := parts.s.State.Role(p.guildID, roleID)
+		roles = append(roles, role.Name)
+	}
+	msg = msgFromTmpl("pieMainExcludeInfo", tmplValueMap{
+		"UserMention":  userMention,
+		"ExcludeRoles": roles,
+	})
+	parts.channelMessageSend(msg)
 }
 
 func (p *guildConfigPresenter) cmdPieMainInfoHandler(parts *msgParts) {
@@ -53,11 +94,19 @@ func (p *guildConfigPresenter) cmdPieMainInfoHandler(parts *msgParts) {
 		role, _ := parts.s.State.Role(p.guildID, roleID)
 		roles = append(roles, role.Name)
 	}
+
+	excludeRoles := make([]string, 0, len(p.excludeRoles))
+	for _, roleID := range p.excludeRoles {
+		role, _ := parts.s.State.Role(p.guildID, roleID)
+		excludeRoles = append(roles, role.Name)
+	}
+
 	msg := msgFromTmpl("pieMainInfo", tmplValueMap{
 		"UserMention":  parts.m.Author.Mention(),
 		"CoinConfigs":  coinConfigs,
 		"Managers":     managers,
 		"ManagerRoles": roles,
+		"ExcludeRoles": excludeRoles,
 	})
 	parts.channelMessageSend(msg)
 }
@@ -68,6 +117,7 @@ func (p *guildConfigPresenter) cmdPieMainManagerHandler(parts *msgParts) {
 		"UserMention":     userMention,
 		"IsShowUsageHint": true,
 		"CmdName":         "manager",
+		"BotPrefix":       piebotConfig.Discord.Prefix,
 	})
 	contents := parts.contents
 	if len(contents) < 2 {
@@ -137,14 +187,19 @@ func (p *guildConfigPresenter) cmdPieMainPrefixHandler(parts *msgParts) {
 			"UserMention":     userMention,
 			"IsShowUsageHint": true,
 			"CmdName":         "prefix",
+			"BotPrefix":       piebotConfig.Discord.Prefix,
 		})
 		parts.channelMessageSend(msg)
 		return
 	}
 	symbol := symbolWrap(contents[0])
 	prefix := prefixWrap(contents[1])
-	if prefix == "?" {
-		msg := msgFromTmpl("pieMainPrefixErr", userMention)
+	botPrefix := piebotConfig.Discord.Prefix
+	if prefix == prefixWrap(botPrefix) {
+		msg := msgFromTmpl("pieMainPrefixErr", tmplValueMap{
+			"UserMention": userMention,
+			"BotPrefix":   botPrefix,
+		})
 		parts.channelMessageSend(msg)
 		return
 	}
@@ -194,7 +249,10 @@ func (p *guildConfigPresenter) cmdPieManListHandler(parts *msgParts) {
 }
 
 func (p *guildConfigPresenter) cmdPieMainHelpHandler(parts *msgParts) {
-	msg := msgFromTmpl("pieMainHelpUsage", parts.m.Author.Mention())
+	msg := msgFromTmpl("pieMainHelpUsage", tmplValueMap{
+		"UserMention": parts.m.Author.Mention(),
+		"BotPrefix":   piebotConfig.Discord.Prefix,
+	})
 	parts.channelMessageSend(msg)
 }
 

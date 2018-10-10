@@ -1,6 +1,12 @@
 // Package db provides ...
 package db
 
+import (
+	"time"
+
+	"github.com/duminghui/go-util/utime"
+)
+
 const colWithdraw = "withdraw"
 
 type Withdraw struct {
@@ -9,6 +15,7 @@ type Withdraw struct {
 	Amount   float64 `bson:"amount"`
 	Address  string  `bson:"address"`
 	TxID     string  `bson:"txid"`
+	Time     string  `bson:"time"`
 }
 
 func (db *DB) SaveWithdraw(userID, userName, address, txid string, amount float64) {
@@ -21,6 +28,7 @@ func (db *DB) SaveWithdraw(userID, userName, address, txid string, amount float6
 		Amount:   amount,
 		Address:  address,
 		TxID:     txid,
+		Time:     utime.FormatTimeStrUTC(time.Now()),
 	}
 	_, err := col.Upsert(data, data)
 	if err != nil {
