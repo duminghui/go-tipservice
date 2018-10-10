@@ -2,8 +2,6 @@
 package db
 
 import (
-	"time"
-
 	"github.com/duminghui/go-tipservice/amount"
 	"github.com/duminghui/go-util/utime"
 	"github.com/globalsign/mgo"
@@ -34,17 +32,17 @@ type Deposit struct {
 }
 
 type NoOwnerDeposit struct {
-	TxID    string  `bson:"txid"`
-	Address string  `bson:"address"`
-	Amount  float64 `bson:"amount"`
-	Time    string  `bson:"time"`
+	TxID    string  `bson:"txid,omitempty"`
+	Address string  `bson:"address,omitempty"`
+	Amount  float64 `bson:"amount,omitempty"`
+	Time    string  `bson:"time,omitempty"`
 }
 
 func (db *DB) cNoOwnerDeposit(session *mgo.Session) *mgo.Collection {
 	return session.DB(db.database).C("no_owner_deposit")
 }
 
-func (db *DB) Deposit(address, txid string, amountF float64, isConfirmed bool) error {
+func (db *DB) Deposit(address, txid string, time int64, amountF float64, isConfirmed bool) error {
 	session := mgoSession.Clone()
 	defer session.Close()
 	user, err := db.userByAddress(session, address)
@@ -53,7 +51,7 @@ func (db *DB) Deposit(address, txid string, amountF float64, isConfirmed bool) e
 	}
 	symbol := db.symbol
 	if user == nil {
-		db.saveNoOwnerDeposit(session, txid, address, amountF)
+		db.saveNoOwnerDeposit(session, txid, address, amountF, time)
 		db.TxProcessStatusDone(session, symbol, txid)
 		return nil
 	}
@@ -75,7 +73,7 @@ func (db *DB) Deposit(address, txid string, amountF float64, isConfirmed bool) e
 			Amount:      amountF,
 			TxID:        txid,
 			Address:     address,
-			Time:        utime.FormatTimeStrUTC(time.Now()),
+			Time:        utime.FormatLongTimeStrUTC(time),
 			IsConfirmed: isConfirmed,
 		}
 		err = c.Insert(depositData)
@@ -103,7 +101,10 @@ func (db *DB) Deposit(address, txid string, amountF float64, isConfirmed bool) e
 		if isConfirmed {
 			err = c.Update(depositQuery,
 				bson.M{
-					"$set": &Deposit{IsConfirmed: true},
+					"$set": &Deposit{
+						IsConfirmed: true,
+						Time:        utime.FormatLongTimeStrUTC(time),
+					},
 				})
 			if err != nil {
 				return err
@@ -124,16 +125,20 @@ func (db *DB) Deposit(address, txid string, amountF float64, isConfirmed bool) e
 	return nil
 }
 
-func (db *DB) saveNoOwnerDeposit(sessionUse *mgo.Session, txid, address string, amount float64) {
+func (db *DB) saveNoOwnerDeposit(sessionUse *mgo.Session, txid, address string, amount float64, time int64) {
 	session, closer := session(sessionUse)
 	defer closer()
+	selector := &NoOwnerDeposit{
+		TxID:    txid,
+		Address: address,
+	}
 	data := &NoOwnerDeposit{
 		TxID:    txid,
 		Address: address,
 		Amount:  amount,
-		Time:    utime.FormatTimeStrUTC(time.Now()),
+		Time:    utime.FormatLongTimeStrUTC(time),
 	}
-	changeInfo, err := db.cNoOwnerDeposit(session).Upsert(data, data)
+	changeInfo, err := db.cNoOwnerDeposit(session).Upsert(selector, data)
 	if err != nil {
 		log.Error("SaveNoOwnerDeposit Error:", err)
 		return

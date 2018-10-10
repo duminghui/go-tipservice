@@ -271,7 +271,7 @@ func txProcessInfo(tx *txInfo) {
 	for _, txDetail := range txInfo.Details {
 		amount := txDetail.Amount
 		address := txDetail.Address
-		err = p.db.Deposit(txDetail.Address, txID, amount, isConfirmed)
+		err = p.db.Deposit(txDetail.Address, txID, txInfo.BlockTime, amount, isConfirmed)
 		if err != nil {
 			log.Errorf("[%s]Deposit Error:[%s][%s][%s][%f]", symbol, err, txID, address, amount)
 			continue
