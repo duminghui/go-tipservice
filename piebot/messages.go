@@ -503,7 +503,7 @@ func (p *guildConfigPresenter) cmdPieHandler(parts *msgParts) {
 	}
 	userName := parts.m.Author.Username
 	userDmr := parts.m.Author.Discriminator
-	log.Infof("[%s:pie]%s#%s(%s) send %s to %d peoples in %s(%s)", symbol, userName, userDmr, userMention, sendAmount, receiversLen, parts.guild.Name, parts.guild.ID)
+	log.Infof("[%s:pie]%s#%s(%s) send %s to %d peoples in [%s(%s)]", symbol, userName, userDmr, userMention, sendAmount, receiversLen, parts.guild.Name, parts.guild.ID)
 
 }
 
