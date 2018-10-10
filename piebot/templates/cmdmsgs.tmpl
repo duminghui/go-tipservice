@@ -56,9 +56,13 @@ Unconfirmed amount: {{.UnconfirmedAmount}} {{.Symbol}}```
 {{.UserMention}} {{.SendAmount}} {{.Symbol}} is not enough to distribute {{.ReceiverCount}} peoples
 {{- end}}
 
+{{define "pieSendCountHint" -}}
+{{.UserMention}} You pie {{.Amount}} {{.Symbol}} to {{.ReceiverCount}} peoples
+{{- end}}
+
 {{define "pieSuccess" -}}
 :lollipop: ~ ~ ~ ~ ~ ~ ~ ~ {{.CoinName}} pie ~ ~ ~ ~ ~ ~ ~ ~:candy:
-{{.AmountEach}} {{.Symbol}} to{{range .Receivers}} {{.}}{{end}}
+{{.AmountEach}} {{.Symbol}} to{{range .Receivers}} {{.}}{{end}}{{if .ShowAllPeople}} (all {{.ReceiverCount}} peoples){{end}}
 {{- end}}
 
 {{define "channelOperatorSuccess" -}}

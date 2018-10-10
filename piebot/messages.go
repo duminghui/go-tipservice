@@ -480,15 +480,30 @@ func (p *guildConfigPresenter) cmdPieHandler(parts *msgParts) {
 		}
 	}
 
+	if receiversLen > eachMsgReceiverNum {
+		sendCountMsg := msgFromTmpl("pieSendCountHint", tmplValueMap{
+			"UserMention":   userMention,
+			"Amount":        sendAmount,
+			"Symbol":        symbol,
+			"ReceiverCount": receiversLen,
+		})
+		parts.channelMessageSend(sendCountMsg)
+	}
+
 	for _, receivers := range receiversMap {
 		msg := msgFromTmpl("pieSuccess", tmplValueMap{
-			"CoinName":   coinConfig.Name,
-			"AmountEach": amountEach,
-			"Symbol":     symbol,
-			"Receivers":  receivers,
+			"CoinName":      coinConfig.Name,
+			"AmountEach":    amountEach,
+			"Symbol":        symbol,
+			"Receivers":     receivers,
+			"ReceiverCount": receiversLen,
+			"ShowAllPeople": receiversLen > eachMsgReceiverNum,
 		})
 		parts.channelMessageSend(msg)
 	}
+	userName := parts.m.Author.Username
+	userDmr := parts.m.Author.Discriminator
+	log.Infof("[%s:pie]%s#%s(%s) send %s to %d peoples in %s(%s)", symbol, userName, userDmr, userMention, sendAmount, receiversLen, parts.guild.Name, parts.guild.ID)
 
 }
 
