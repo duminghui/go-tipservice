@@ -607,7 +607,7 @@ func channel(s *discordgo.Session, channelID string) (*discordgo.Channel, error)
 	if err != nil {
 		channel, err = s.Channel(channelID)
 		if err != nil {
-			log.Errorf("Get Channel Error:%s", err)
+			log.Errorf("Get Channel Error:%s:%s", err, channelID)
 			return nil, err
 		}
 	}
@@ -619,7 +619,7 @@ func guild(s *discordgo.Session, guildID string) (*discordgo.Guild, error) {
 	if err != nil {
 		guild, err = s.Guild(guildID)
 		if err != nil {
-			log.Errorf("Get guild Error:%s", err)
+			log.Errorf("Get guild Error:%s:%s", err, guildID)
 			return nil, err
 		}
 	}
