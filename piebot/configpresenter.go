@@ -103,6 +103,7 @@ func initGuildConfig() {
 		}
 		p.managers = v.Managers
 		p.managerRoles = v.ManagerRoles
+		p.excludeRoles = v.ExcludeRoles
 	}
 }
 
@@ -113,6 +114,7 @@ func (g guildConfigPresenterMap) initGuildConfigPresenter(guildID string) *guild
 	p.gccMap = make(map[symbolWrap]*GuildCoinConfig)
 	p.managers = []string{}
 	p.managerRoles = []string{}
+	p.excludeRoles = []string{}
 	g[guildID] = p
 	return p
 }
