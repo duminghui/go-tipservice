@@ -306,7 +306,8 @@ func (p *guildConfigPresenter) cmdPieHelperHandler(parts *msgParts) {
 	parts.channelMessageSend(cmdMsg.String())
 }
 
-func (p *guildConfigPresenter) pieReceivers(s *discordgo.Session, guild *discordgo.Guild, channelID, pieUserID string, isEveryone bool, isNeedOnline bool, roles []string, users []*discordgo.User) ([]*discordgo.User, error) {
+// @here @everyone isEveryone is true
+func (p *guildConfigPresenter) pieReceivers(s *discordgo.Session, guild *discordgo.Guild, channelID, pieUserID string, isEveryone bool, roles []string, users []*discordgo.User) ([]*discordgo.User, error) {
 	receivers := []*discordgo.User{}
 	rolesStr := strings.Join(roles, "|")
 	excludeRoles := strings.Join(p.excludeRoles, "|")
@@ -318,19 +319,25 @@ func (p *guildConfigPresenter) pieReceivers(s *discordgo.Session, guild *discord
 		case member.User.ID == pieUserID:
 			continue
 		}
+		isAdd := false
+		for _, user := range users {
+			if userID == user.ID {
+				isAdd = true
+				break
+			}
+		}
+		if isAdd {
+			receivers = append(receivers, member.User)
+			continue
+		}
 
 		userPermission, err := s.State.UserChannelPermissions(userID, channelID)
 		if err != nil {
-			log.Errorf("PieReceivers get permission Error:%s", err)
+			log.Errorf("PieReceivers get permission Error:%s[%s(%s)][%s(%s)]", err, member.User.Username, userID, guild.Name, guild.ID)
 			continue
 		}
 		if (userPermission & discordgo.PermissionReadMessages) != discordgo.PermissionReadMessages {
 			continue
-		}
-		isOnline := false
-		presence, err := s.State.Presence(guild.ID, userID)
-		if err == nil && presence.Status == discordgo.StatusOnline {
-			isOnline = true
 		}
 		isInExcludeRoles := false
 		for _, role := range member.Roles {
@@ -339,28 +346,30 @@ func (p *guildConfigPresenter) pieReceivers(s *discordgo.Session, guild *discord
 				break
 			}
 		}
-		isAdd := false
-		//everyone
-		if isEveryone && !isNeedOnline {
-			//everyone
-			isAdd = !isInExcludeRoles
-		} else if isEveryone && isOnline {
-			//here
-			isAdd = !isInExcludeRoles
-		} else if len(roles) > 0 {
-			for _, role := range member.Roles {
-				if strings.Contains(rolesStr, role) {
-					isAdd = !isInExcludeRoles
-					break
-				}
+
+		for _, role := range member.Roles {
+			if strings.Contains(rolesStr, role) {
+				isAdd = !isInExcludeRoles
+				break
 			}
-		} else if len(users) > 0 {
-			for _, user := range users {
-				if member.User.ID == user.ID {
-					isAdd = true
-					break
-				}
-			}
+		}
+		if isAdd {
+			receivers = append(receivers, member.User)
+			continue
+		}
+
+		isOnline := false
+		presence, err := s.State.Presence(guild.ID, userID)
+		if err != nil {
+			log.Errorf("PieReceivers get Presence Error:%s[%s(%s)][%s(%s)]", err, member.User.Username, userID, guild.Name, guild.ID)
+			continue
+		}
+		if presence.Status == discordgo.StatusOnline || presence.Status == discordgo.StatusIdle {
+			isOnline = true
+		}
+
+		if isEveryone && isOnline {
+			isAdd = !isInExcludeRoles
 		}
 		if isAdd {
 			receivers = append(receivers, member.User)
@@ -434,20 +443,13 @@ func (p *guildConfigPresenter) cmdPieHandler(parts *msgParts) {
 	}
 
 	isEveryone := false
-	isNeedOnline := true
 	if partLen == 1 {
 		isEveryone = true
 	} else if parts.m.MentionEveryone {
 		isEveryone = true
-		for _, part := range parts.contents {
-			if strings.Contains(part, "@everyone") {
-				isNeedOnline = false
-				break
-			}
-		}
 	}
 
-	receivers, err := p.pieReceivers(parts.s, parts.guild, parts.m.ChannelID, userID, isEveryone, isNeedOnline, parts.m.MentionRoles, parts.m.Mentions)
+	receivers, err := p.pieReceivers(parts.s, parts.guild, parts.m.ChannelID, userID, isEveryone, parts.m.MentionRoles, parts.m.Mentions)
 	if err != nil {
 		log.Errorf("Pie get receivers error:%s", err)
 		return
@@ -519,6 +521,9 @@ func (p *guildConfigPresenter) cmdPieHandler(parts *msgParts) {
 }
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
+	if m.Type != discordgo.MessageTypeDefault {
+		return
+	}
 	if m.Author.Bot || m.Author.ID == s.State.User.ID {
 		return
 	}
@@ -560,7 +565,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 	prefixList := gcp.prefixList()
 	if len(prefixList) == 0 {
-		log.Error("Prefix List is Empty:", channel.GuildID)
+		log.Errorf("Prefix List Empty:[%s(%s)]", guild.Name, guild.ID)
 		return
 	}
 	var prefix prefixWrap
