@@ -53,3 +53,11 @@ func readConfig(file string) error {
 	}
 	return nil
 }
+
+func hasSymbol(symbol string) bool {
+	_, ok := coinInfos[symbol]
+	if ok {
+		return true
+	}
+	return false
+}

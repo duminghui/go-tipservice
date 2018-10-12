@@ -1,4 +1,5 @@
 {{define "main"}}{{end}}
+
 {{define "usage" -}}
 {{.UserMention}} {{.CmdName}} command usage:{{"\n"}}
 {{- end}}
@@ -30,7 +31,7 @@
 {{define "channelUsage" -}}
 {{if .IsShowUsageHint}}{{template "usage" . }}{{end -}}
 ***{{.Prefix}}channel <add|remove> <#channel...>***
-  add or remove active channel for `{{.Symbol}}` `s commands
+  add or remove active channel for `{{.Symbol}}`'s commands
 {{- end}}
 
 {{define "helpUsage" -}}
@@ -40,6 +41,7 @@
 {{template "depositUsage" .}}
 {{template "withdrawUsage" . }}
 {{- if .IsManager}}{{"\n"}}{{template "channelUsage" .}}{{end}}
+{{- if .IsManager}}{{"\n"}}{{template "pieAutoAddUsage" .}}{{end}}
 {{- end}}
 
 {{define "pieMainManagerUsage" -}}
@@ -78,4 +80,18 @@
 {{template "pieMainPrefixUsage" .}}
 {{template "pieMainManagerUsage" .}}
 {{template "pieMainExcludeUsage" .}}
+{{- end}}
+
+{{define "pieAutoAddUsage" -}}
+{{if .IsShowUsageHint}}{{template "usage" . }}{{end -}}
+***{{.Prefix}}pieAutoAdd -c <#channel> -r <@role> -o <online|all> -i <intervaltime> -a <amount> -c <cycleTimes> -e <aftertime>***
+  Add auto pie task
+  **-c <#channel>:** Which channel's people can get pie, `this flag can ignore, default current channel`
+  **-r <@role>:** Who is the <@role> can get pie
+  **-o <online|all>:** Only Pie to online peoples or all peoples `default online`
+  **-i <intervaltime>:** <XhYmZs>(X hour Y minute Z second ) how long time to Pie once, `must > 180s default 180s`
+    Example: `1h` is one hour, `1h30m` is on hour and 30 minutes
+  **-a <amout>**: Must be a number > {{.PieMin}} {{.Symbol}} `default {{.PieMin}}`
+  **-c <cycleTimes>:** How many times to Auto Pie, `must be a number > 0, default 10`
+  **-e <aftertime>:** How long time to Auto Pie after create task, same as <intervaltime> but `must >= 0 seconds, default 60s`
 {{- end}}

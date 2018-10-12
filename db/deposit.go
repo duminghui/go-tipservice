@@ -8,7 +8,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 )
 
-func (db *DB) cDeposit(session *mgo.Session) *mgo.Collection {
+func (db *DBSymbol) cDeposit(session *mgo.Session) *mgo.Collection {
 	return session.DB(db.database).C("deposit")
 }
 
@@ -38,18 +38,17 @@ type NoOwnerDeposit struct {
 	Time    string  `bson:"time,omitempty"`
 }
 
-func (db *DB) cNoOwnerDeposit(session *mgo.Session) *mgo.Collection {
+func (db *DBSymbol) cNoOwnerDeposit(session *mgo.Session) *mgo.Collection {
 	return session.DB(db.database).C("no_owner_deposit")
 }
 
-func (db *DB) Deposit(address, txid string, time int64, amountF float64, isConfirmed bool) error {
+func (db *DBSymbol) Deposit(symbol, address, txid string, time int64, amountF float64, isConfirmed bool) error {
 	session := mgoSession.Clone()
 	defer session.Close()
 	user, err := db.userByAddress(session, address)
 	if err != nil {
 		return err
 	}
-	symbol := db.symbol
 	if user == nil {
 		db.saveNoOwnerDeposit(session, txid, address, amountF, time)
 		db.TxProcessStatusDone(session, symbol, txid)
@@ -125,7 +124,7 @@ func (db *DB) Deposit(address, txid string, time int64, amountF float64, isConfi
 	return nil
 }
 
-func (db *DB) saveNoOwnerDeposit(sessionUse *mgo.Session, txid, address string, amount float64, time int64) {
+func (db *DBSymbol) saveNoOwnerDeposit(sessionUse *mgo.Session, txid, address string, amount float64, time int64) {
 	session, closer := session(sessionUse)
 	defer closer()
 	selector := &NoOwnerDeposit{

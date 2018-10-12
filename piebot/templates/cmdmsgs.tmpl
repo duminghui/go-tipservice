@@ -16,20 +16,17 @@
 
 {{define "withdrawAmountNotEnoughErr" -}}
 {{.UserMention}} you don't have enouth amount to withdraw
-```Balance amount:{{.Amount}} {{.Symbol}}
-Unconfirmed amount:{{.UnconfirmedAmount}} {{.Symbol}}```
 {{- end}}
 
 {{define "withdrawSuccess" -}}
 {{.UserMention}} you withdraw {{.Amount}} {{.Symbol}} to `{{.Addr}}`
 txfee: {{.TxFee}} {{.Symbol}}
 {{.TxExpUrl}}{{.TxID}}
+Now your balance:
 {{- end}}
 
 {{define "balAmount" -}}
-{{.UserMention}} Your balance:
-```Confirmed: {{.Amount}} {{.Symbol}}
-Unconfirmed: {{.UnconfirmedAmount}} {{.Symbol}}```
+{{.}} Your balance:
 {{- end}}
 
 {{define "depositInfo" -}}
@@ -44,8 +41,6 @@ Unconfirmed: {{.UnconfirmedAmount}} {{.Symbol}}```
 {{define "pieNotEnoughAmountErr" -}}
 {{.UserMention}} you don't have enough amount to distribute
 please use command `{{.Prefix}}deposit` to get deposit address
-```Balance amount: {{.Amount}} {{.Symbol}}
-Unconfirmed amount: {{.UnconfirmedAmount}} {{.Symbol}}```
 {{- end}}
 
 {{define "pieNoPeopleErr" -}}
@@ -131,3 +126,48 @@ Unconfirmed amount: {{.UnconfirmedAmount}} {{.Symbol}}```
 {{.UserMention}} now server exclude roles:
 {{template "pieMainExcludeList" .}}
 {{- end}}
+
+{{define "pieAutoAddParamsLenErr" -}}
+Don't have enough command params!!
+{{template "pieAutoAddUsage" .}}
+{{- end}}
+
+{{define "pieAutoAddChannelErr" -}}
+Must have one <#channel>!!
+{{template "pieAutoAddUsage" .}}
+{{- end}}
+
+{{define "pieAutoAddRoleErr" -}}
+Must have one <role>!!
+{{template "pieAutoAddUsage" .}}
+{{- end}}
+
+{{define "pieAutoAddStatusErr" -}}
+Must be <online> or <all> !!
+{{template "pieAutoAddUsage" .}}
+{{- end}}
+
+{{define "pieAutoAddTimeErr" -}}
+Must be use h,m,s to define time!!
+{{template "pieAutoAddUsage" .}}
+{{- end}}
+
+{{define "pieAutoAddAmountErr" -}}
+<amount> must be a number > 0.0
+{{template "pieAutoAddUsage" .}}
+{{- end}}
+
+{{define "pieAutoAddCycleTimeErr" -}}
+<amount> must be a number > 0.0
+{{template "pieAutoAddUsage" .}}
+{{- end}}
+
+{{define "pieAutoAddErr" -}}
+PieAuto add failed
+{{- end}}
+
+
+{{define "pieAutoAddSuccess" -}}
+{{.}} You add PieAuto task successfully:
+{{- end}}
+

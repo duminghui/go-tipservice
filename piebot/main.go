@@ -9,7 +9,6 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	rpcclient "github.com/duminghui/go-rpcclient"
-	"github.com/duminghui/go-tipservice/config"
 	"github.com/duminghui/go-tipservice/db"
 	"github.com/duminghui/go-util/ulog"
 	"github.com/duminghui/go-util/umgo"
@@ -58,7 +57,7 @@ func main() {
 	log.Info("daemon started")
 
 	loadTemplates()
-	initPresenter()
+	initRunEnv()
 
 	go terminateHelper()
 
@@ -68,6 +67,8 @@ func main() {
 	}
 
 	discordSession.AddHandler(messageCreate)
+	discordSession.AddHandler(reactionAddEventHandler)
+	// discordSession.AddHandler(reactionRemoveEventHandler)
 
 	err = discordSession.Open()
 	if err != nil {
@@ -139,15 +140,7 @@ func termHandler(sig os.Signal) error {
 
 var log = logrus.New()
 
-type coinPresenter struct {
-	db   *db.DB
-	rpc  *rpcclient.Client
-	coin *config.CoinInfo
-}
-
-var coinPresenters = make(map[symbolWrap]*coinPresenter)
-
-func initPresenter() {
+func initRunEnv() {
 	mgoSession, err := umgo.NewSession(dbConfig)
 	if err != nil {
 		log.Fatalln("Init Mongodb Error:", err)
@@ -155,15 +148,9 @@ func initPresenter() {
 	db.SetLog(log)
 	db.SetSession(mgoSession)
 	rpcclient.SetLog(log)
-	for k, v := range coinInfos {
-		sblWrap := symbolWrap(k)
-		presenter := new(coinPresenter)
-		presenter.db = db.New(v.Symbol, v.Database)
-		presenter.rpc = rpcclient.New(v.RPC)
-		presenter.coin = v
-		coinPresenters[sblWrap] = presenter
-	}
-	initGuildConfig()
+	initCoinPresenters()
+	readGuildConfigsFromDB()
+	readGuildSymbolCoinConfigsFromDB()
 }
 
 func initConfigLog() {

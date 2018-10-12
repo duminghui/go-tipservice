@@ -9,7 +9,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 )
 
-func (db *DB) cUser(session *mgo.Session) *mgo.Collection {
+func (db *DBSymbol) cUser(session *mgo.Session) *mgo.Collection {
 	return session.DB(db.database).C("user")
 }
 
@@ -52,7 +52,7 @@ type userAllAmount struct {
 	UnconfirmedAmountF float64       `bson:"unconfirmed_amount_f"`
 }
 
-func (db *DB) userByAddress(sessionIn *mgo.Session, address string) (*User, error) {
+func (db *DBSymbol) userByAddress(sessionIn *mgo.Session, address string) (*User, error) {
 	session, closer := session(sessionIn)
 	defer closer()
 	query := db.cUser(session).Find(&userSelector{Address: address})
@@ -68,7 +68,7 @@ func (db *DB) userByAddress(sessionIn *mgo.Session, address string) (*User, erro
 	return user, nil
 }
 
-func (db *DB) UserByID(sessionIn *mgo.Session, userID string) (*User, error) {
+func (db *DBSymbol) UserByID(sessionIn *mgo.Session, userID string) (*User, error) {
 	session, closer := session(sessionIn)
 	defer closer()
 	query := db.cUser(session).Find(&userSelector{UserID: userID})
@@ -84,7 +84,7 @@ func (db *DB) UserByID(sessionIn *mgo.Session, userID string) (*User, error) {
 	return user, nil
 }
 
-func (db *DB) UserAmountSub(sessionIn *mgo.Session, userID, userName string, amountSub amount.Amount) error {
+func (db *DBSymbol) UserAmountSub(sessionIn *mgo.Session, userID, userName string, amountSub amount.Amount) error {
 	session, closer := session(sessionIn)
 	defer closer()
 	user, err := db.UserByID(session, userID)
@@ -115,7 +115,7 @@ func (db *DB) UserAmountSub(sessionIn *mgo.Session, userID, userName string, amo
 	return nil
 }
 
-func (db *DB) UserAmountAddUpsert(sessionIn *mgo.Session, userID, userName string, amountAdd amount.Amount) error {
+func (db *DBSymbol) UserAmountAddUpsert(sessionIn *mgo.Session, userID, userName string, amountAdd amount.Amount) error {
 	session, closer := session(sessionIn)
 	defer closer()
 	user, err := db.UserByID(session, userID)
@@ -160,7 +160,7 @@ func (db *DB) UserAmountAddUpsert(sessionIn *mgo.Session, userID, userName strin
 	return nil
 }
 
-func (db *DB) userUnconfirmedAmountAddUpsert(sessionIn *mgo.Session, userID, userName string, amountAdd amount.Amount) error {
+func (db *DBSymbol) userUnconfirmedAmountAddUpsert(sessionIn *mgo.Session, userID, userName string, amountAdd amount.Amount) error {
 	session, closer := session(sessionIn)
 	defer closer()
 	user, err := db.UserByID(session, userID)
@@ -205,7 +205,7 @@ func (db *DB) userUnconfirmedAmountAddUpsert(sessionIn *mgo.Session, userID, use
 	return nil
 }
 
-func (db *DB) userConfirmedAmount(userID string, amountCfm amount.Amount) error {
+func (db *DBSymbol) userConfirmedAmount(userID string, amountCfm amount.Amount) error {
 	session := mgoSession.Clone()
 	defer session.Close()
 	user, err := db.UserByID(session, userID)
@@ -234,7 +234,7 @@ func (db *DB) userConfirmedAmount(userID string, amountCfm amount.Amount) error 
 	return nil
 }
 
-func (db *DB) UserAddressUpsert(userID, userName, address string, isInsert bool) error {
+func (db *DBSymbol) UserAddressUpsert(userID, userName, address string, isInsert bool) error {
 	session := mgoSession.Clone()
 	defer session.Close()
 	col := db.cUser(session)

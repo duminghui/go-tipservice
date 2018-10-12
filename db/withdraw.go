@@ -18,7 +18,7 @@ type Withdraw struct {
 	Time     string  `bson:"time"`
 }
 
-func (db *DB) SaveWithdraw(userID, userName, address, txid string, amount float64) {
+func (db *DBSymbol) SaveWithdraw(userID, userName, address, txid string, amount float64) {
 	session := mgoSession.Clone()
 	defer session.Close()
 	col := session.DB(db.database).C(colWithdraw)

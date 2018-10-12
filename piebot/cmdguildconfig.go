@@ -1,15 +1,9 @@
 // Package main provides ...
 package main
 
-import (
-	"fmt"
-	"regexp"
-	"strings"
+import "fmt"
 
-	"github.com/bwmarrin/discordgo"
-)
-
-func (p *guildConfigPresenter) cmdMainPie(parts *msgParts) {
+func (p *guildPresenter) cmdMainPie(parts *msgParts) {
 	cntParts := parts.contents
 	switch {
 	case len(cntParts) == 0:
@@ -32,7 +26,7 @@ func (p *guildConfigPresenter) cmdMainPie(parts *msgParts) {
 	}
 }
 
-func (p *guildConfigPresenter) cmdPieMainExcludeHandler(parts *msgParts) {
+func (p *guildPresenter) cmdPieMainExcludeHandler(parts *msgParts) {
 	userMention := parts.m.Author.Mention()
 	msg := msgFromTmpl("pieMainExcludeUsage", tmplValueMap{
 		"UserMention":     userMention,
@@ -70,33 +64,37 @@ func (p *guildConfigPresenter) cmdPieMainExcludeHandler(parts *msgParts) {
 	parts.channelMessageSend(msg)
 }
 
-func (p *guildConfigPresenter) cmdPieMainInfoHandler(parts *msgParts) {
+func (p *guildPresenter) cmdPieMainInfoHandler(parts *msgParts) {
 	coinConfigs := make([]*tmplValueMap, 0)
-	for k, v := range p.prefixSymbol {
+	guildID := p.guildID
+	scc := guildSymbolCoinConfigs[guildID]
+
+	for k, v := range scc {
 		channels := make([]string, 0)
-		for _, channelID := range p.gccMap[v].channelIDs {
+		for _, channelID := range v.ChannelIDs {
 			channels = append(channels, fmt.Sprintf("<#%s>", channelID))
 		}
 		coinConfig := &tmplValueMap{
-			"Prefix":   k,
-			"Symbol":   v,
+			"Prefix":   v.CmdPrefix,
+			"Symbol":   k,
 			"Channels": channels,
 		}
 		coinConfigs = append(coinConfigs, coinConfig)
 	}
-	managers := make([]string, 0, len(p.managers))
-	for _, manager := range p.managers {
+	gc := guildConfigs.gc(guildID)
+	managers := make([]string, 0, len(gc.Managers))
+	for _, manager := range gc.Managers {
 		member, _ := parts.s.State.Member(p.guildID, manager)
 		managers = append(managers, member.User.Username)
 	}
-	roles := make([]string, 0, len(p.managerRoles))
-	for _, roleID := range p.managerRoles {
+	roles := make([]string, 0, len(gc.ManagerRoles))
+	for _, roleID := range gc.ManagerRoles {
 		role, _ := parts.s.State.Role(p.guildID, roleID)
 		roles = append(roles, role.Name)
 	}
 
-	excludeRoles := make([]string, 0, len(p.excludeRoles))
-	for _, roleID := range p.excludeRoles {
+	excludeRoles := make([]string, 0, len(gc.ExcludeRoles))
+	for _, roleID := range gc.ExcludeRoles {
 		role, _ := parts.s.State.Role(p.guildID, roleID)
 		excludeRoles = append(roles, role.Name)
 	}
@@ -111,7 +109,7 @@ func (p *guildConfigPresenter) cmdPieMainInfoHandler(parts *msgParts) {
 	parts.channelMessageSend(msg)
 }
 
-func (p *guildConfigPresenter) cmdPieMainManagerHandler(parts *msgParts) {
+func (p *guildPresenter) cmdPieMainManagerHandler(parts *msgParts) {
 	userMention := parts.m.Author.Mention()
 	msg := msgFromTmpl("pieMainManagerUsage", tmplValueMap{
 		"UserMention":     userMention,
@@ -161,25 +159,7 @@ func (p *guildConfigPresenter) cmdPieMainManagerHandler(parts *msgParts) {
 	parts.channelMessageSend(msg)
 }
 
-func (p *guildConfigPresenter) isBotManager(s *discordgo.Session, guild *discordgo.Guild, userID string) bool {
-	if strings.Contains(piebotConfig.Discord.SuperManagerIDs, userID) {
-		return true
-	}
-	if userID == guild.OwnerID {
-		return true
-	}
-	member, err := s.State.Member(guild.ID, userID)
-	if err != nil {
-		log.Error("isBotManager Error:", err)
-		return false
-	}
-	if p.isManager(userID) || p.inManagerRoles(member.Roles) {
-		return true
-	}
-	return false
-}
-
-func (p *guildConfigPresenter) cmdPieMainPrefixHandler(parts *msgParts) {
+func (p *guildPresenter) cmdPieMainPrefixHandler(parts *msgParts) {
 	contents := parts.contents
 	userMention := parts.m.Author.Mention()
 	if len(contents) != 2 {
@@ -192,10 +172,10 @@ func (p *guildConfigPresenter) cmdPieMainPrefixHandler(parts *msgParts) {
 		parts.channelMessageSend(msg)
 		return
 	}
-	symbol := symbolWrap(contents[0])
-	prefix := prefixWrap(contents[1])
+	sbl := symbol(contents[0])
+	pfx := prefix(contents[1])
 	botPrefix := piebotConfig.Discord.Prefix
-	if prefix == prefixWrap(botPrefix) {
+	if pfx == prefix(botPrefix) {
 		msg := msgFromTmpl("pieMainPrefixErr", tmplValueMap{
 			"UserMention": userMention,
 			"BotPrefix":   botPrefix,
@@ -203,43 +183,45 @@ func (p *guildConfigPresenter) cmdPieMainPrefixHandler(parts *msgParts) {
 		parts.channelMessageSend(msg)
 		return
 	}
-	if !hasSymbol(symbol) {
+	if !hasSymbol(string(sbl)) {
 		msg := msgFromTmpl("pieMainPrefixSymbolNotExistErr", tmplValueMap{
 			"UserMention": userMention,
-			"Symbol":      symbol,
+			"Symbol":      sbl,
 		})
 		parts.channelMessageSend(msg)
 		return
 	}
-	symbolTmp, _ := p.symbolByPrefix(prefix)
+
+	sccm := guildSymbolCoinConfigs.sccm(p.guildID)
+	symbolTmp, _ := sccm.symbolByPrefix(pfx)
 
 	if symbolTmp != "" {
 		msg := msgFromTmpl("pieMainPrefixExistErr", tmplValueMap{
 			"UserMention": userMention,
-			"Prefix":      prefix,
+			"Prefix":      pfx,
 			"Symbol":      symbolTmp,
 		})
 		parts.channelMessageSend(msg)
 		return
 	}
 
-	err := p.updatePrefix(symbol, parts.prefix, prefix)
+	err := p.updatePrefix(sbl, parts.prefix, pfx)
 	if err != nil {
 		log.Errorf("cmdPieSetPrefix Cache error:%s", err)
 		return
 	}
 	msg := msgFromTmpl("pieMainPrefixSuccess", tmplValueMap{
 		"UserMention": userMention,
-		"Prefix":      prefix,
-		"Symbol":      symbol,
+		"Prefix":      pfx,
+		"Symbol":      sbl,
 	})
 	parts.channelMessageSend(msg)
 }
 
-func (p *guildConfigPresenter) cmdPieManListHandler(parts *msgParts) {
-	symbols := make([]string, 0, len(coinPresenters))
-	for k := range coinPresenters {
-		symbols = append(symbols, string(k))
+func (p *guildPresenter) cmdPieManListHandler(parts *msgParts) {
+	symbols := make([]string, 0, len(coinInfos))
+	for k := range coinInfos {
+		symbols = append(symbols, k)
 	}
 	msg := msgFromTmpl("pieMainListInfo", tmplValueMap{
 		"UserMention": parts.m.Author.Mention(),
@@ -248,57 +230,10 @@ func (p *guildConfigPresenter) cmdPieManListHandler(parts *msgParts) {
 	parts.channelMessageSend(msg)
 }
 
-func (p *guildConfigPresenter) cmdPieMainHelpHandler(parts *msgParts) {
+func (p *guildPresenter) cmdPieMainHelpHandler(parts *msgParts) {
 	msg := msgFromTmpl("pieMainHelpUsage", tmplValueMap{
 		"UserMention": parts.m.Author.Mention(),
 		"BotPrefix":   piebotConfig.Discord.Prefix,
-	})
-	parts.channelMessageSend(msg)
-}
-
-func (p *guildConfigPresenter) cmdChannelHandler(parts *msgParts) {
-	cmdPrefix := parts.prefix
-	userMention := parts.m.Author.Mention()
-	symbol := parts.symbol
-	cmdUsage := &cmdUsageInfo{
-		tmplName:        "channelUsage",
-		IsShowUsageHint: true,
-		CmdName:         "channel",
-		UserMention:     userMention,
-		Prefix:          string(cmdPrefix),
-		Symbol:          string(symbol),
-	}
-	contents := parts.contents
-	if len(contents) < 2 {
-		parts.channelMessageSend(cmdUsage.String())
-		return
-	}
-	operator := contents[0]
-	if operator != "add" && operator != "remove" {
-		parts.channelMessageSend(cmdUsage.String())
-		return
-	}
-	str := strings.Join(contents[1:], "")
-	exp := regexp.MustCompile(`<#(\d{18})>`)
-	result := exp.FindAllStringSubmatch(str, -1)
-	channels := make([]string, 0, len(result))
-	for _, v := range result {
-		channels = append(channels, v[1])
-	}
-	if len(channels) == 0 {
-		parts.channelMessageSend(cmdUsage.String())
-		return
-	}
-	finalChannels, err := p.guildChannelUpdate(symbol, operator, channels)
-	if err != nil {
-		log.Error("cmdSetChannelHandler Error:", err)
-		return
-	}
-	msg := msgFromTmpl("channelOperatorSuccess", tmplValueMap{
-		"UserMention": userMention,
-		"Operator":    operator,
-		"Symbol":      symbol,
-		"Channels":    finalChannels,
 	})
 	parts.channelMessageSend(msg)
 }

@@ -17,15 +17,25 @@ func SetSession(session *mgo.Session) {
 	mgoSession = session
 }
 
-type DB struct {
+type DBSymbol struct {
 	symbol   string
 	database string
 }
 
-func New(symbol, database string) *DB {
-	return &DB{
+func NewDBSymbol(symbol, database string) *DBSymbol {
+	return &DBSymbol{
 		symbol:   symbol,
 		database: database,
+	}
+}
+
+type DBGuild struct {
+	database string
+}
+
+func NewDBGuild() *DBGuild {
+	return &DBGuild{
+		database: "guild_config",
 	}
 }
 

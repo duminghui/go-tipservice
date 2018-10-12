@@ -22,6 +22,8 @@ type Pie struct {
 type CoinInfo struct {
 	Name                     string                `json:"name"`
 	Symbol                   string                `json:"symbol"`
+	Website                  string                `json:"website"`
+	IconURL                  string                `json:"iconUrl"`
 	Database                 string                `json:"database"`
 	TxExplorerURL            string                `json:"txexplorer"`
 	MinConfirmations4Deposit int64                 `json:"minConfirmations4Deposit"`

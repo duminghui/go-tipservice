@@ -24,6 +24,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type guildConfig db.GuildConfig
+
+func (p *guildConfig) tmp() {
+	guildConfig.GuildID
+}
+
 type txInfo struct {
 	Symbol string `json:"symbol"`
 	TxID   string `json:"txid"`
@@ -35,7 +41,7 @@ type processPresenter struct {
 	symbol                   string
 	scanTxDir                string
 	depositMinConfirmactions int64
-	db                       *db.DB
+	db                       *db.DBSymbol
 	rpc                      *rpcclient.Client
 	wg                       *sync.WaitGroup
 	fileScanStop             chan struct{}
@@ -183,7 +189,7 @@ func (p *processPresenter) txProcessDBStart() {
 		for {
 			select {
 			case <-ticker.C:
-				txs, err := p.db.TxProcessInfos()
+				txs, err := p.db.TxProcessInfos(10)
 				if err != nil {
 					log.Errorf("[%s]txProcessDB Error:%s", p.symbol, err)
 					continue
@@ -219,7 +225,7 @@ func (p *processPresenter) txProcessDBInfos(txs []*db.TxProcessInfo) {
 		}
 	}
 	if len(txs) > 0 {
-		txs, err := p.db.TxProcessInfos()
+		txs, err := p.db.TxProcessInfos(10)
 		if err != nil {
 			log.Errorf("[%s]txProcessList Error:%s", p.symbol, err)
 			return
@@ -271,7 +277,7 @@ func txProcessInfo(tx *txInfo) {
 	for _, txDetail := range txInfo.Details {
 		amount := txDetail.Amount
 		address := txDetail.Address
-		err = p.db.Deposit(txDetail.Address, txID, txInfo.BlockTime, amount, isConfirmed)
+		err = p.db.Deposit(symbol, txDetail.Address, txID, txInfo.BlockTime, amount, isConfirmed)
 		if err != nil {
 			log.Errorf("[%s]Deposit Error:[%s][%s][%s][%f]", symbol, err, txID, address, amount)
 			continue
@@ -295,7 +301,7 @@ func initPresenter() {
 	for k, v := range coinInfos {
 		p := new(processPresenter)
 		p.symbol = k
-		p.db = db.New(v.Symbol, v.Database)
+		p.db = db.NewDBSymbol(v.Symbol, v.Database)
 		p.rpc = rpcclient.New(v.RPC)
 		p.depositMinConfirmactions = v.MinConfirmations4Deposit
 		p.scanTxDir = v.ScanTxDir

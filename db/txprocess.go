@@ -16,7 +16,7 @@ const (
 	TxProcessStatusDone = txProcessStatus(1)
 )
 
-func (db *DB) cTxProcess(session *mgo.Session) *mgo.Collection {
+func (db *DBSymbol) cTxProcess(session *mgo.Session) *mgo.Collection {
 	return session.DB(db.database).C("tx_process_info")
 }
 
@@ -28,10 +28,10 @@ type TxProcessInfo struct {
 	Symbol      string          `bson:"symbol,omitempty"`
 	TxID        string          `bson:"txid,omitempty"`
 	Status      txProcessStatus `bson:"status,omitempty"`
-	ProcessTime int64           `bson:"process_time,omitempty"`
+	ProcessTime time.Time       `bson:"process_time,omitempty"`
 }
 
-func (db *DB) TxProcessIsDone(sessionUse *mgo.Session, txID string) (bool, error) {
+func (db *DBSymbol) TxProcessIsDone(sessionUse *mgo.Session, txID string) (bool, error) {
 	session, closer := session(sessionUse)
 	defer closer()
 	c := db.cTxProcess(session)
@@ -54,7 +54,7 @@ func (db *DB) TxProcessIsDone(sessionUse *mgo.Session, txID string) (bool, error
 	return false, nil
 }
 
-func (db *DB) txProcess(sessionOrg *mgo.Session, symbol, txID string) (*TxProcessInfo, error) {
+func (db *DBSymbol) txProcess(sessionOrg *mgo.Session, symbol, txID string) (*TxProcessInfo, error) {
 	session, closer := session(sessionOrg)
 	defer closer()
 	selector := TxProcessInfo{
@@ -74,7 +74,7 @@ func (db *DB) txProcess(sessionOrg *mgo.Session, symbol, txID string) (*TxProces
 	return info, nil
 }
 
-func (db *DB) TxProcessAddNew(symbol, txID string, extendSecond float64) error {
+func (db *DBSymbol) TxProcessAddNew(symbol, txID string, extendSecond int) error {
 	session, closer := session(nil)
 	defer closer()
 	info, err := db.txProcess(session, symbol, txID)
@@ -84,7 +84,7 @@ func (db *DB) TxProcessAddNew(symbol, txID string, extendSecond float64) error {
 	if info != nil {
 		return nil
 	}
-	processTime := time.Now().Add(time.Duration(extendSecond) * time.Second).Unix()
+	processTime := time.Now().Add(time.Duration(extendSecond) * time.Second)
 	data := &TxProcessInfo{
 		Symbol:      symbol,
 		TxID:        txID,
@@ -100,7 +100,7 @@ func (db *DB) TxProcessAddNew(symbol, txID string, extendSecond float64) error {
 	return nil
 }
 
-func (db *DB) TxProcessExtendTime(sessionUse *mgo.Session, symbol, txID string, extendSecond int64) error {
+func (db *DBSymbol) TxProcessExtendTime(sessionUse *mgo.Session, symbol, txID string, extendSecond int64) error {
 	session, closer := session(sessionUse)
 	defer closer()
 	selector := TxProcessInfo{
@@ -108,7 +108,7 @@ func (db *DB) TxProcessExtendTime(sessionUse *mgo.Session, symbol, txID string, 
 		TxID:   txID,
 	}
 
-	processTime := time.Now().Add(time.Duration(extendSecond) * time.Second).Unix()
+	processTime := time.Now().Add(time.Duration(extendSecond) * time.Second)
 	data := bson.M{
 		"$set": &TxProcessInfo{
 			ProcessTime: processTime,
@@ -122,7 +122,7 @@ func (db *DB) TxProcessExtendTime(sessionUse *mgo.Session, symbol, txID string, 
 	return nil
 }
 
-func (db *DB) TxProcessStatusDone(sessionUse *mgo.Session, symbol, txID string) error {
+func (db *DBSymbol) TxProcessStatusDone(sessionUse *mgo.Session, symbol, txID string) error {
 	session, closer := session(sessionUse)
 	defer closer()
 	selector := TxProcessInfo{
@@ -171,7 +171,7 @@ func (db *DB) TxProcessStatusDone(sessionUse *mgo.Session, symbol, txID string) 
 // 	return nil
 // }
 
-func (db *DB) TxProcessInfos() ([]*TxProcessInfo, error) {
+func (db *DBSymbol) TxProcessInfos(size int) ([]*TxProcessInfo, error) {
 	session := mgoSession.Clone()
 	defer session.Close()
 	nowTime := time.Now().Unix()
@@ -184,7 +184,7 @@ func (db *DB) TxProcessInfos() ([]*TxProcessInfo, error) {
 			"$lt": nowTime,
 		},
 	}
-	query := db.cTxProcess(session).Find(selector).Limit(10)
+	query := db.cTxProcess(session).Find(selector).Limit(size)
 	txs := make([]*TxProcessInfo, 0)
 	err := query.All(&txs)
 	if err != nil {
