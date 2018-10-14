@@ -37,12 +37,16 @@ func (p *guildSymbolPresenter) cmdPieAutoHandler(parts *msgParts) {
 
 	m := parts.m
 	roles := m.MentionRoles
-	if len(roles) != 1 {
+	role := ""
+	roleCount := len(roles)
+	if roleCount > 1 {
 		msg := msgFromTmpl("pieAutoRoleErr", usageTmplValue)
 		parts.channelMessageSend(msg)
 		return
 	}
-	role := roles[0]
+	if roleCount == 1 {
+		role = roles[0]
+	}
 
 	cmdFlag := flag.NewFlagSet("pieAuto", flag.ContinueOnError)
 	statusField := cmdFlag.String("s", "online", "")
@@ -239,10 +243,13 @@ func pieAuto2EmbedFields(s *discordgo.Session, p *db.PieAuto) []*discordgo.Messa
 	if err == nil {
 		guildField = guild.Name
 	}
-	role, err := role(s, p.GuildID, p.RoleID)
-	roleField := p.RoleID
-	if err == nil {
-		roleField = role.Name
+	roleField := "All Roles"
+	if p.RoleID != "" {
+		roleField = p.RoleID
+		role, err := role(s, p.GuildID, p.RoleID)
+		if err == nil {
+			roleField = role.Name
+		}
 	}
 	cycleTimes := fmt.Sprintf("%d", p.CycleTimes)
 	intervalTime := p.IntervalTime.String()
