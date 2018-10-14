@@ -24,12 +24,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type guildConfig db.GuildConfig
-
-func (p *guildConfig) tmp() {
-	guildConfig.GuildID
-}
-
 type txInfo struct {
 	Symbol string `json:"symbol"`
 	TxID   string `json:"txid"`
@@ -214,9 +208,6 @@ func (p *processPresenter) txProcessDBStart() {
 }
 
 func (p *processPresenter) txProcessDBInfos(txs []*db.TxProcessInfo) {
-	if len(txs) == 0 {
-		return
-	}
 	for _, tx := range txs {
 		p.db.TxProcessExtendTime(nil, tx.Symbol, tx.TxID, 30)
 		txQueue <- &txInfo{
@@ -228,6 +219,9 @@ func (p *processPresenter) txProcessDBInfos(txs []*db.TxProcessInfo) {
 		txs, err := p.db.TxProcessInfos(10)
 		if err != nil {
 			log.Errorf("[%s]txProcessList Error:%s", p.symbol, err)
+			return
+		}
+		if len(txs) == 0 {
 			return
 		}
 		p.txProcessDBInfos(txs)

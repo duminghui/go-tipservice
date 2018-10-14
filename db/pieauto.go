@@ -2,7 +2,7 @@
 package db
 
 import (
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/duminghui/go-tipservice/amount"
@@ -18,6 +18,7 @@ type PieAuto struct {
 	UserName     string        `bson:"username"`
 	Symbol       string        `bson:"symbol"`
 	ChannelID    string        `bson:"channelid"`
+	ChannelName  string        `bson:"channelName"`
 	RoleID       string        `bson:"roleid"`
 	CreateTime   time.Time     `bson:"createtime"`
 	CycleTimes   int64         `bosn:"cycletimes"`
@@ -31,23 +32,26 @@ type PieAuto struct {
 }
 
 type pieAutoOption struct {
-	NextPieTime time.Time `bson:"netpietime,omitempty"`
+	ChannelName string    `bson:"channelName,omitempty"`
+	NextPieTime time.Time `bson:"nextpietime,omitempty"`
 	RunnedTimes int64     `bson:"runnedtimes,omitempty"`
 	IsEnd       bool      `bson:"isend,omitempty"`
 }
 
 type pieAutoSelector struct {
-	Symbol string `bson:"symbol,omitempty"`
+	Symbol string        `bson:"symbol,omitempty"`
+	ID     bson.ObjectId `bson:"_id,omitempty"`
+	UserID string        `bson:"userid,omitempty"`
 }
 
 func (db *DBGuild) cPieAuto(session *mgo.Session) *mgo.Collection {
 	return session.DB(db.database).C("pieauto")
 }
 
-func (db *DBGuild) PieAutoAdd(guildID, guildName, userID, userName, symbol, channelID, roleID string, cycleTimes int64, intervalTime time.Duration, amount amount.Amount, isOnlineUser bool, extendTime time.Duration) (*PieAuto, error) {
-	id := bson.NewObjectId()
+func (db *DBGuild) PieAutoAdd(guildID, guildName, userID, userName, symbol, channelID, channelName, roleID string, cycleTimes int64, intervalTime time.Duration, amount amount.Amount, isOnlineUser bool, extendTime time.Duration) (*PieAuto, error) {
 	session := mgoSession.Clone()
 	defer session.Close()
+	id := bson.NewObjectId()
 	createTime := time.Now()
 	nextPieTime := createTime.Add(extendTime)
 	data := &PieAuto{
@@ -58,6 +62,7 @@ func (db *DBGuild) PieAutoAdd(guildID, guildName, userID, userName, symbol, chan
 		UserName:     userName,
 		Symbol:       symbol,
 		ChannelID:    channelID,
+		ChannelName:  channelName,
 		RoleID:       roleID,
 		CreateTime:   createTime,
 		CycleTimes:   cycleTimes,
@@ -69,21 +74,48 @@ func (db *DBGuild) PieAutoAdd(guildID, guildName, userID, userName, symbol, chan
 		RunnedTimes:  0,
 		IsEnd:        false,
 	}
-	// col := cPieAuto(session)
-	// err := col.Insert(data)
-	// if err != nil {
-	// 	log.Errorf("[%s]AutoPieAdd Error:%s[%s(%s)][%s(%s)]", symbol, err, guildID, guildName, userID, userName)
-	// }
+	col := db.cPieAuto(session)
+	err := col.Insert(data)
+	if err != nil {
+		log.Errorf("[%s]AutoPieAdd Error:%s[%s(%s)][%s(%s)]", symbol, err, guildID, guildName, userID, userName)
+	}
 	return data, nil
 }
 
-func (db *DBGuild) PieAutoRemove(id string) error {
+var NotIDError = errors.New("Not Bson ID Error")
+var PieAutoOwnerError = errors.New("Not PieAuto owner")
+
+func (db *DBGuild) PieAutoRemove(userID, id string) error {
 	if !bson.IsObjectIdHex(id) {
-		return fmt.Errorf("No AutoPie ID:%s", id)
+		return NotIDError
 	}
 	session := mgoSession.Clone()
 	defer session.Close()
-	err := db.cPieAuto(session).RemoveId(bson.ObjectIdHex(id))
+	selector := &pieAutoSelector{
+		ID:     bson.ObjectIdHex(id),
+		UserID: userID,
+	}
+	err := db.cPieAuto(session).Remove(selector)
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return nil
+		}
+		log.Errorf("PieAutoRemove Error:%s[uID:%s,id:%s]", err, userID, id)
+		return err
+	}
+	return nil
+}
+
+func (db *DBGuild) PieAutoUpdateChannelName(id, channelName string) error {
+	session := mgoSession.Clone()
+	defer session.Close()
+	data := &pieAutoOption{
+		ChannelName: channelName,
+	}
+	col := db.cPieAuto(session)
+	err := col.UpdateId(bson.ObjectIdHex(id), bson.M{
+		"$set": data,
+	})
 	return err
 }
 
@@ -149,12 +181,18 @@ func (db *DBGuild) PieAutoLists(symbol string, start, size int) ([]*PieAuto, err
 }
 
 func (db *DBGuild) PieAutoByID(sessionIn *mgo.Session, id string) (*PieAuto, error) {
+	if !bson.IsObjectIdHex(id) {
+		return nil, NotIDError
+	}
 	session, closer := session(sessionIn)
 	defer closer()
 	autopie := new(PieAuto)
 	col := db.cPieAuto(session)
 	err := col.FindId(bson.ObjectIdHex(id)).One(autopie)
 	if err != nil {
+		if err == mgo.ErrNotFound {
+			return nil, nil
+		}
 		log.Errorf("AutoPieByID Error:%s(%s)", err, id)
 		return nil, err
 	}

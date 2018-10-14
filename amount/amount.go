@@ -231,6 +231,10 @@ func formatBigInt28Digits(numBig *big.Int) string {
 	return numBigStr
 }
 
+func FromInt64(value int64) (Amount, error) {
+	return FromNumString(strconv.FormatInt(value, 10))
+}
+
 func FromFloat64(value float64) (Amount, error) {
 	return FromNumString(strconv.FormatFloat(value, 'f', -1, 64))
 }
