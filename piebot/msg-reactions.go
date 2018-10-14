@@ -66,7 +66,7 @@ func pieAutoInfoRemove(s *discordgo.Session, channelID, botMsgID, userID string)
 	// Error:HTTP 403 Forbidden, {"code": 50003, "message": "Cannot execute action on a DM channel"}
 	err = s.MessageReactionRemove(channelID, botMsgID, reactionStop, userID)
 	if err != nil {
-		log.Info("Error:", err)
+		log.Errorf("pieAutoInfoRemove:MessageReactionRemove Error:%s[cID:%s,mID:%s,uID:%s]", err, channelID, botMsgID, userID)
 	}
 }
 
@@ -101,7 +101,7 @@ func pieAutoInfoRefresh(s *discordgo.Session, channelID, botMsgID, userID string
 	// Error:HTTP 403 Forbidden, {"code": 50003, "message": "Cannot execute action on a DM channel"}
 	err = s.MessageReactionRemove(channelID, botMsgID, reactionRefresh, userID)
 	if err != nil {
-		log.Info("Error:", err)
+		log.Errorf("pieAutoInfoRefresh:MessageReactionRemove Error:%s[cID:%s,mID:%s,uID:%s]", err, channelID, botMsgID, userID)
 	}
 }
 
