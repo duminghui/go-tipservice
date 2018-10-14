@@ -22,12 +22,20 @@ type msgParts struct {
 	isManager bool
 }
 
-func (p *msgParts) channelMessageSend(msg string) {
-	p.s.ChannelMessageSend(p.channel.ID, msg)
+func (p *msgParts) channelMessageSend(msg string) (*discordgo.Message, error) {
+	return p.s.ChannelMessageSend(p.channel.ID, msg)
 }
 
-func (p *msgParts) channelMessageSendComplex(msg *discordgo.MessageSend) {
-	p.s.ChannelMessageSendComplex(p.channel.ID, msg)
+func (p *msgParts) channelMessageSendEmbed(embed *discordgo.MessageEmbed) (*discordgo.Message, error) {
+	return p.s.ChannelMessageSendEmbed(p.channel.ID, embed)
+}
+
+func (p *msgParts) channelMessageSendComplex(content string, embed *discordgo.MessageEmbed) (*discordgo.Message, error) {
+	msg := &discordgo.MessageSend{
+		Content: content,
+		Embed:   embed,
+	}
+	return p.s.ChannelMessageSendComplex(p.channel.ID, msg)
 }
 
 type cmdInfo struct {
@@ -81,13 +89,13 @@ func reigsterBotCmdHandler() {
 	}
 	cmdInfoMap[setChannel.name] = setChannel
 
-	pieAutoAdd := &cmdInfo{
-		name:         "pieAutoAdd",
+	pieAuto := &cmdInfo{
+		name:         "pieAuto",
 		managerCmd:   true,
 		channelLimit: false,
 		handler:      (*guildSymbolPresenter).cmdPieAutoHandler,
 	}
-	cmdInfoMap[pieAutoAdd.name] = pieAutoAdd
+	cmdInfoMap[pieAuto.name] = pieAuto
 
 }
 
@@ -105,6 +113,9 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	channel, err := channel(s, m.ChannelID)
 	if err != nil {
 		log.Error("messageCreateHandler channel Error:", err)
+		return
+	}
+	if channel.Type == discordgo.ChannelTypeDM {
 		return
 	}
 	guildID := channel.GuildID
@@ -150,7 +161,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 	}
 	if pfx == "" {
-		log.Errorf("can't find match prefix for:%s[%s]", guildName, guildID)
+		// log.Errorf("can't find match prefix for:%s[%s]", guildName, guildID)
 		return
 	}
 	// just only prefix

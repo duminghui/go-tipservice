@@ -38,7 +38,7 @@ func (c *guildConfig) isBotManager(s *discordgo.Session, guild *discordgo.Guild,
 	if userID == guild.OwnerID {
 		return true
 	}
-	member, err := s.State.Member(guild.ID, userID)
+	member, err := member(s, guild.ID, userID)
 	if err != nil {
 		log.Error("isBotManager Error:", err)
 		return false

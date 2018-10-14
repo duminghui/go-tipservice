@@ -63,12 +63,6 @@ func embed(title, url, desc, timestamp string, color int, author *discordgo.Mess
 	}
 }
 
-func msgSend(content string, embed *discordgo.MessageEmbed) *discordgo.MessageSend {
-	return &discordgo.MessageSend{
-		Content: content,
-		Embed:   embed,
-	}
-}
 func mef(n string, v string, i bool) *discordgo.MessageEmbedField {
 	f := &discordgo.MessageEmbedField{
 		Name:   n,

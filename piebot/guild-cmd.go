@@ -54,7 +54,7 @@ func (p *guildPresenter) cmdPieMainExcludeHandler(parts *msgParts) {
 	}
 	roles := make([]string, 0, len(finalRoles))
 	for _, roleID := range finalRoles {
-		role, _ := parts.s.State.Role(p.guildID, roleID)
+		role, _ := role(parts.s, p.guildID, roleID)
 		roles = append(roles, role.Name)
 	}
 	msg = msgFromTmpl("pieMainExcludeInfo", tmplValueMap{
@@ -84,18 +84,18 @@ func (p *guildPresenter) cmdPieMainInfoHandler(parts *msgParts) {
 	gc := guildConfigs.gc(guildID)
 	managers := make([]string, 0, len(gc.Managers))
 	for _, manager := range gc.Managers {
-		member, _ := parts.s.State.Member(p.guildID, manager)
+		member, _ := member(parts.s, p.guildID, manager)
 		managers = append(managers, member.User.Username)
 	}
 	roles := make([]string, 0, len(gc.ManagerRoles))
 	for _, roleID := range gc.ManagerRoles {
-		role, _ := parts.s.State.Role(p.guildID, roleID)
+		role, _ := role(parts.s, p.guildID, roleID)
 		roles = append(roles, role.Name)
 	}
 
 	excludeRoles := make([]string, 0, len(gc.ExcludeRoles))
 	for _, roleID := range gc.ExcludeRoles {
-		role, _ := parts.s.State.Role(p.guildID, roleID)
+		role, _ := role(parts.s, p.guildID, roleID)
 		excludeRoles = append(roles, role.Name)
 	}
 
@@ -143,12 +143,12 @@ func (p *guildPresenter) cmdPieMainManagerHandler(parts *msgParts) {
 
 	managers := make([]string, 0, len(updateUsers))
 	for _, manager := range updateUsers {
-		member, _ := parts.s.State.Member(p.guildID, manager)
+		member, _ := member(parts.s, p.guildID, manager)
 		managers = append(managers, member.User.Username)
 	}
 	roles := make([]string, 0, len(updateRoles))
 	for _, roleID := range updateRoles {
-		role, _ := parts.s.State.Role(p.guildID, roleID)
+		role, _ := role(parts.s, p.guildID, roleID)
 		roles = append(roles, role.Name)
 	}
 	msg = msgFromTmpl("pieMainManagerInfo", tmplValueMap{

@@ -39,3 +39,12 @@ func loadTemplates() {
 		log.Infof("Template Name:%s", t.Name())
 	}
 }
+
+func msgFromTmpl(tmplName string, data interface{}) string {
+	buf := new(strings.Builder)
+	err := msgTmpl.ExecuteTemplate(buf, tmplName, data)
+	if err != nil {
+		return err.Error()
+	}
+	return buf.String()
+}

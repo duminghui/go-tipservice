@@ -56,7 +56,7 @@ please use command `{{.Prefix}}deposit` to get deposit address
 {{- end}}
 
 {{define "pieSuccess" -}}
-:lollipop: ~ ~ ~ ~ ~ ~ ~ ~ {{.CoinName}} pie ~ ~ ~ ~ ~ ~ ~ ~:candy:
+:lollipop: ~ ~ ~ ~ ~ ~ ~ ~ {{.CoinName}} Pie ~ ~ ~ ~ ~ ~ ~ ~:candy:
 {{.AmountEach}} {{.Symbol}} to{{range .Receivers}} {{.}}{{end}}{{if .ShowAllPeople}} (all {{.ReceiverCount}} peoples){{end}}
 {{- end}}
 
@@ -127,47 +127,75 @@ please use command `{{.Prefix}}deposit` to get deposit address
 {{template "pieMainExcludeList" .}}
 {{- end}}
 
-{{define "pieAutoAddParamsLenErr" -}}
+{{define "pieAutoParamsLenErr" -}}
 Don't have enough command params!!
-{{template "pieAutoAddUsage" .}}
+{{template "pieAutoUsage" .}}
 {{- end}}
 
-{{define "pieAutoAddChannelErr" -}}
-Must have one <#channel>!!
-{{template "pieAutoAddUsage" .}}
+{{define "pieAutoChannelErr" -}}
+Just need only one <#channel>!!
+{{template "pieAutoParamChannelUsage" .}}
 {{- end}}
 
-{{define "pieAutoAddRoleErr" -}}
+{{define "pieAutoRoleErr" -}}
 Must have one <role>!!
-{{template "pieAutoAddUsage" .}}
+{{template "pieAutoParamRoleUsage" .}}
 {{- end}}
 
-{{define "pieAutoAddStatusErr" -}}
-Must be <online> or <all> !!
-{{template "pieAutoAddUsage" .}}
+{{define "pieAutoStatusErr" -}}
+Status must be 'online' or 'all'
+{{template "pieAutoParamStatusUsage" .}}
 {{- end}}
 
-{{define "pieAutoAddTimeErr" -}}
-Must be use h,m,s to define time!!
-{{template "pieAutoAddUsage" .}}
+{{define "pieAutoIntervalErr" -}}
+{{template "pieAutoParamIntervalUsage" .}}
 {{- end}}
 
-{{define "pieAutoAddAmountErr" -}}
-<amount> must be a number > 0.0
-{{template "pieAutoAddUsage" .}}
+{{define "pieAutoAmountErr" -}}
+{{.UserMention}} <amount> must be a number
+{{template "pieAutoParamAmountUsage" .}}
 {{- end}}
 
-{{define "pieAutoAddCycleTimeErr" -}}
-<amount> must be a number > 0.0
-{{template "pieAutoAddUsage" .}}
+{{define "pieAutoAmountMinErr" -}}
+{{.UserMention}}
+{{template "pieAutoParamAmountUsage" .}}
 {{- end}}
 
-{{define "pieAutoAddErr" -}}
+{{define "pieAutoAmountNotEnoughErr" -}}
+{{.UserMention}} you don't have enouth amount to add PieAuto task
+Need `{{.SumAmount}} {{.Symbol}}`, You have:
+{{- end}}
+
+{{define "pieAutoCycleTimeErr" -}}
+{{template "pieAutoParamCycleTimesUsage" .}}
+{{- end}}
+
+{{define "pieAutoExtendTimeErr" -}}
+{{template "pieAutoParamAfterTimeUsage" .}}
+{{- end}}
+
+{{define "pieAutoErr" -}}
 PieAuto add failed
 {{- end}}
 
 
-{{define "pieAutoAddSuccess" -}}
+{{define "pieAutoSuccess" -}}
 {{.}} You add PieAuto task successfully:
 {{- end}}
 
+{{define "pieAutoSuccessDM" -}}
+{{.}} You add PieAuto task successfully
+click reaction :arrows_counterclockwise: to refresh this task info
+click reaction :stop_button: to stop and remove this Task
+{{- end}}
+
+{{define "pieAutoTaskNoAmountRemoveInfo" -}}
+You don't have enough amount to run Auto Pie task#{{.AutoPieID}}, this task removed by Bot
+Balance:
+Amount: {{.Amount}} {{.Symbol}}
+Unconfirmed Amount: {{.UnconfirmedAmount}} {{.Symbol}}
+{{- end}}
+
+{{define "pieAutoIsRemoved" -}}
+This task is removed
+{{- end}}

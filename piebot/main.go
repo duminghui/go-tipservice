@@ -66,6 +66,7 @@ func main() {
 		log.Fatalf("Createing Discrod Session Error: %s", err)
 	}
 
+	discordSession.State.MaxMessageCount = 200
 	discordSession.AddHandler(messageCreate)
 	discordSession.AddHandler(reactionAddEventHandler)
 	// discordSession.AddHandler(reactionRemoveEventHandler)
@@ -82,6 +83,7 @@ func main() {
 		p.rpc.Start()
 	}
 	reigsterBotCmdHandler()
+	pieAutoScanStart()
 	err = daemon.ServeSignals()
 	if err != nil {
 		log.Info("daemon terminate Error:", err)
@@ -131,6 +133,8 @@ func terminateHelper() {
 func termHandler(sig os.Signal) error {
 	// log.Info("terminating...")
 	log.Info("terminating...")
+	pieAutoScanStop()
+	pieAutoScanWait()
 	dgStop <- struct{}{}
 	<-dgStopDone
 	stop <- struct{}{}
