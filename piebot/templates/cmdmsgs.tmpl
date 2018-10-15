@@ -128,17 +128,17 @@ please use command `{{.Prefix}}deposit` to get deposit address
 {{- end}}
 
 {{define "pieAutoParamsLenErr" -}}
-Don't have enough command params!!
+Don't have enough command params
 {{template "pieAutoUsage" .}}
 {{- end}}
 
 {{define "pieAutoChannelErr" -}}
-Just need only one <#channel>!!
+Just need only one <#channel>
 {{template "pieAutoParamChannelUsage" .}}
 {{- end}}
 
 {{define "pieAutoRoleErr" -}}
-Must have one <role>!!
+Must have one <role>
 {{template "pieAutoParamRoleUsage" .}}
 {{- end}}
 

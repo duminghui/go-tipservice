@@ -397,6 +397,7 @@ func (p *guildSymbolPresenter) cmdPieHandler(parts *msgParts) {
 		"Symbol":        sbl,
 		"Prefix":        cmdPrefix,
 		"SendAmount":    sendAmount,
+		"Amount":        sendAmount,
 		"ReceiverCount": receiverCount,
 	}
 	if err != nil {
