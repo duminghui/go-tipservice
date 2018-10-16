@@ -14,6 +14,10 @@ import (
 	"github.com/duminghui/go-util/utime"
 )
 
+func registerSymbolPieAutoCmd() {
+	registerSymbolCmd("pieAuto", false, true, false, (*guildSymbolPresenter).cmdPieAutoHandler)
+}
+
 func (p *guildSymbolPresenter) cmdPieAutoHandler(parts *msgParts) {
 	sbl := p.symbol
 	userMention := parts.m.Author.Mention()

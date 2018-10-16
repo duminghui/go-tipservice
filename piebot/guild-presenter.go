@@ -44,7 +44,7 @@ func (p *guildPresenter) guildManagerUpdate(operator string, users, roles []stri
 		log.Errorf("guildManagerUpdate Error:%s,%s:%s", err, guildID, operator)
 		return nil, nil, err
 	}
-	gmDB, err := dbGuild.GuildConfigManagerByGuildID(nil, guildID)
+	gmDB, err := dbGuild.GuildConfigByID(nil, guildID)
 	if err != nil {
 		log.Errorf("guildManagerUpdate read from db Error:%s,%s", err, guildID)
 		return nil, nil, err
@@ -66,7 +66,7 @@ func (p *guildPresenter) guildExcludeUpdate(operator string, roles []string) ([]
 		log.Errorf("guildExcludeUpdate Error:%s,%s:%s", err, guildID, operator)
 		return nil, err
 	}
-	gmDB, err := dbGuild.GuildConfigManagerByGuildID(nil, guildID)
+	gmDB, err := dbGuild.GuildConfigByID(nil, guildID)
 	if err != nil {
 		log.Errorf("guildExcludeUpdate read from db Error:%s,%s", err, p.guildID)
 		return nil, err

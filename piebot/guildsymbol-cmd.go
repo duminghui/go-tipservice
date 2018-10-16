@@ -13,6 +13,15 @@ import (
 	"github.com/duminghui/go-tipservice/db"
 )
 
+func registerSymbolCmds() {
+	registerSymbolCmd("help", true, false, false, (*guildSymbolPresenter).cmdPieHelperHandler)
+	registerSymbolCmd("pie", true, false, false, (*guildSymbolPresenter).cmdPieHandler)
+	registerSymbolCmd("deposit", true, false, false, (*guildSymbolPresenter).cmdDepositHandler)
+	registerSymbolCmd("bal", true, false, false, (*guildSymbolPresenter).cmdBalHandler)
+	registerSymbolCmd("withdraw", true, false, false, (*guildSymbolPresenter).cmdWithdrawHandler)
+	registerSymbolCmd("channel", false, true, false, cmdChannelHandler)
+}
+
 func (p *guildSymbolPresenter) cmdWithdrawHandler(parts *msgParts) {
 	cmdPrefix := parts.prefix
 	userID := parts.m.Author.ID
@@ -232,8 +241,8 @@ func (p *guildSymbolPresenter) cmdPieHelperHandler(parts *msgParts) {
 		"IsShowUsageHint": false,
 		"CmdName":         "help",
 		"UserMention":     parts.m.Author.Mention(),
-		"Prefix":          string(cmdPrefix),
-		"Symbol":          string(sbl),
+		"Prefix":          cmdPrefix,
+		"Symbol":          sbl,
 		"PieMin":          pieMinAmount,
 		"WithdrawMin":     withdrawMinAmount,
 		"TxFeePercent":    txFeePercent * 100,
@@ -341,7 +350,6 @@ func (p *guildSymbolPresenter) cmdPieHandler(parts *msgParts) {
 	coinConfig := p.coinInfo
 	pieMinAmount, err := amount.FromFloat64(coinConfig.Pie.Min)
 	tmplValue := &tmplValueMap{
-		"tmplName":        "pieUsage",
 		"IsShowUsageHint": true,
 		"CmdName":         "pie",
 		"UserMention":     userMention,
@@ -454,8 +462,9 @@ func (p *guildSymbolPresenter) cmdPieHandler(parts *msgParts) {
 	userName := parts.m.Author.Username
 	userDmr := parts.m.Author.Discriminator
 	log.Infof("[%s:pie]%s#%s(%s) send %s to %d peoples in [%s(%s)]", sbl, userName, userDmr, userID, sendAmount, receiverCount, parts.guild.Name, parts.guild.ID)
-
 }
+
+var cmdChannelHandler = (*guildSymbolPresenter).cmdChannelHandler
 
 func (p *guildSymbolPresenter) cmdChannelHandler(parts *msgParts) {
 	cmdPrefix := parts.prefix

@@ -38,6 +38,18 @@ func embedAuthor(name, url, iconURL string) *discordgo.MessageEmbedAuthor {
 	}
 }
 
+func embedFields(size int) []*discordgo.MessageEmbedField {
+	return make([]*discordgo.MessageEmbedField, 0, size)
+}
+
+type embedInfo struct {
+	title     string
+	url       string
+	desc      string
+	timestamp string
+	color     int
+}
+
 // --------------------------------
 // Author(URL) -----------thumbnail
 // Title(URL)  -----------
@@ -46,20 +58,20 @@ func embedAuthor(name, url, iconURL string) *discordgo.MessageEmbedAuthor {
 // ----Image -------------
 // Fotter(image,text)*timestamp
 
-func embed(title, url, desc, timestamp string, color int, author *discordgo.MessageEmbedAuthor, thumbnail *discordgo.MessageEmbedThumbnail, footer *discordgo.MessageEmbedFooter, image *discordgo.MessageEmbedImage) *discordgo.MessageEmbed {
+func embed(info *embedInfo, author *discordgo.MessageEmbedAuthor, thumbnail *discordgo.MessageEmbedThumbnail, footer *discordgo.MessageEmbedFooter, image *discordgo.MessageEmbedImage, fields []*discordgo.MessageEmbedField) *discordgo.MessageEmbed {
 	return &discordgo.MessageEmbed{
-		URL:         url,
-		Title:       title,
-		Description: desc,
-		Timestamp:   timestamp,
-		Color:       color,
+		URL:         info.url,
+		Title:       info.title,
+		Description: info.desc,
+		Timestamp:   info.timestamp,
+		Color:       info.color,
 		Footer:      footer,
 		//image bottom
 		Image: image,
 		//image right up
 		Thumbnail: thumbnail,
 		Author:    author,
-		Fields:    nil,
+		Fields:    fields,
 	}
 }
 

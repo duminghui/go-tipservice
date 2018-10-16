@@ -174,7 +174,7 @@ func (db *DBSymbol) TxProcessStatusDone(sessionUse *mgo.Session, symbol, txID st
 func (db *DBSymbol) TxProcessInfos(size int) ([]*TxProcessInfo, error) {
 	session := mgoSession.Clone()
 	defer session.Close()
-	nowTime := time.Now().Unix()
+	nowTime := time.Now()
 	selector := bson.M{
 		"status": -1,
 		// "status": bson.M{

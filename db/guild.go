@@ -36,18 +36,18 @@ type guildConfigExcludeRoles struct {
 func (db *DBGuild) GuildConfigExcludeRolesRemove(guildID, guildName string, excluderoles []string) error {
 	session := mgoSession.Clone()
 	defer session.Close()
-	manager, err := db.GuildConfigManagerByGuildID(session, guildID)
+	config, err := db.GuildConfigByID(session, guildID)
 	if err != nil {
 		return err
 	}
-	if manager == nil {
+	if config == nil {
 		return nil
 	}
-	if len(manager.ExcludeRoles) == 0 {
+	if len(config.ExcludeRoles) == 0 {
 		return nil
 	}
 	rolesMap := make(map[string]int)
-	for _, role := range manager.ExcludeRoles {
+	for _, role := range config.ExcludeRoles {
 		rolesMap[role] = 1
 	}
 	for _, role := range excluderoles {
@@ -74,12 +74,12 @@ func (db *DBGuild) GuildConfigExcludeRolesRemove(guildID, guildName string, excl
 func (db *DBGuild) GuildConfigExcludeRolesAdd(guildID, guildName string, excluderoles []string) error {
 	session := mgoSession.Clone()
 	defer session.Close()
-	manager, err := db.GuildConfigManagerByGuildID(session, guildID)
+	config, err := db.GuildConfigByID(session, guildID)
 	if err != nil {
 		return err
 	}
 	col := db.cGuildConfig(session)
-	if manager == nil {
+	if config == nil {
 		data := &GuildConfig{
 			GuildID:      guildID,
 			GuildName:    guildName,
@@ -89,7 +89,7 @@ func (db *DBGuild) GuildConfigExcludeRolesAdd(guildID, guildName string, exclude
 		return err
 	}
 	rolesMap := make(map[string]int)
-	for _, role := range manager.ExcludeRoles {
+	for _, role := range config.ExcludeRoles {
 		rolesMap[role] = 1
 	}
 	for _, role := range excluderoles {
@@ -115,20 +115,20 @@ func (db *DBGuild) GuildConfigExcludeRolesAdd(guildID, guildName string, exclude
 func (db *DBGuild) GuildConfigManagerRemove(guildID, guildName string, users, roles []string) error {
 	session := mgoSession.Clone()
 	defer session.Close()
-	manager, err := db.GuildConfigManagerByGuildID(session, guildID)
+	config, err := db.GuildConfigByID(session, guildID)
 	if err != nil {
 		return err
 	}
-	if manager == nil {
+	if config == nil {
 		return nil
 	}
-	if len(manager.Managers) == 0 && len(manager.ManagerRoles) == 0 {
+	if len(config.Managers) == 0 && len(config.ManagerRoles) == 0 {
 		return nil
 	}
 	managers := make([]string, 0)
-	if len(manager.Managers) != 0 {
+	if len(config.Managers) != 0 {
 		managerMap := make(map[string]int)
-		for _, exitUser := range manager.Managers {
+		for _, exitUser := range config.Managers {
 			managerMap[exitUser] = 1
 		}
 		for _, user := range users {
@@ -139,9 +139,9 @@ func (db *DBGuild) GuildConfigManagerRemove(guildID, guildName string, users, ro
 		}
 	}
 	updateRoles := make([]string, 0)
-	if len(manager.ManagerRoles) != 0 {
+	if len(config.ManagerRoles) != 0 {
 		roleMap := make(map[string]int)
-		for _, existRole := range manager.ManagerRoles {
+		for _, existRole := range config.ManagerRoles {
 			roleMap[existRole] = 1
 		}
 		for _, role := range roles {
@@ -169,12 +169,12 @@ func (db *DBGuild) GuildConfigManagerRemove(guildID, guildName string, users, ro
 func (db *DBGuild) GuildConfigManagerAdd(guildID, guildName string, users, roles []string) error {
 	session := mgoSession.Clone()
 	defer session.Close()
-	manager, err := db.GuildConfigManagerByGuildID(session, guildID)
+	config, err := db.GuildConfigByID(session, guildID)
 	if err != nil {
 		return err
 	}
 	col := db.cGuildConfig(session)
-	if manager == nil {
+	if config == nil {
 		data := &GuildConfig{
 			GuildID:      guildID,
 			GuildName:    guildName,
@@ -189,7 +189,7 @@ func (db *DBGuild) GuildConfigManagerAdd(guildID, guildName string, users, roles
 	for _, user := range users {
 		managerMap[user] = 1
 	}
-	for _, user := range manager.Managers {
+	for _, user := range config.Managers {
 		managerMap[user] = 1
 	}
 	managers := make([]string, 0)
@@ -200,7 +200,7 @@ func (db *DBGuild) GuildConfigManagerAdd(guildID, guildName string, users, roles
 	for _, role := range roles {
 		roleMap[role] = 1
 	}
-	for _, role := range manager.ManagerRoles {
+	for _, role := range config.ManagerRoles {
 		roleMap[role] = 1
 	}
 	addRoles := make([]string, 0)
@@ -221,31 +221,31 @@ func (db *DBGuild) GuildConfigManagerAdd(guildID, guildName string, users, roles
 	return err
 }
 
-func (db *DBGuild) GuildConfigManagerList() ([]*GuildConfig, error) {
+func (db *DBGuild) GuildConfigList() ([]*GuildConfig, error) {
 	session := mgoSession.Clone()
 	defer session.Close()
 	col := db.cGuildConfig(session)
-	guildManagers := make([]*GuildConfig, 0)
-	err := col.Find(nil).All(&guildManagers)
-	return guildManagers, err
+	guildConfigs := make([]*GuildConfig, 0)
+	err := col.Find(nil).All(&guildConfigs)
+	return guildConfigs, err
 }
 
-func (db *DBGuild) GuildConfigManagerByGuildID(sessionIn *mgo.Session, guildID string) (*GuildConfig, error) {
+func (db *DBGuild) GuildConfigByID(sessionIn *mgo.Session, guildID string) (*GuildConfig, error) {
 	session, closer := session(sessionIn)
 	defer closer()
 	col := db.cGuildConfig(session)
 	selector := &guildConfigSelector{
 		GuildID: guildID,
 	}
-	manager := new(GuildConfig)
-	err := col.Find(selector).One(manager)
+	config := new(GuildConfig)
+	err := col.Find(selector).One(config)
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			return nil, nil
 		}
 		return nil, err
 	}
-	return manager, nil
+	return config, nil
 }
 
 func (db *DBGuild) cGuildCoinConfig(session *mgo.Session) *mgo.Collection {

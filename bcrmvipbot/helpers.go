@@ -1,11 +1,7 @@
 // Package main provides ...
 package main
 
-import (
-	"regexp"
-
-	"github.com/bwmarrin/discordgo"
-)
+import "github.com/bwmarrin/discordgo"
 
 func channel(s *discordgo.Session, channelID string) (*discordgo.Channel, error) {
 	channel, err := s.State.Channel(channelID)
@@ -124,14 +120,4 @@ func channelMessageEditComplx(s *discordgo.Session, channelID, msgID, content st
 		return nil, err
 	}
 	return msg, nil
-}
-
-func channelIDsFromContent(content string) []string {
-	exp := regexp.MustCompile(`<#(\d{18})>`)
-	result := exp.FindAllStringSubmatch(content, -1)
-	channels := make([]string, 0, len(result))
-	for _, v := range result {
-		channels = append(channels, v[1])
-	}
-	return channels
 }

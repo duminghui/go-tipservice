@@ -18,7 +18,7 @@ import (
 
 var (
 	cmdFlag    = flag.String("s", "", "send signal to the daemon\nstop - fast shutdown")
-	configFile = flag.String("c", "piebot.json", "config file path")
+	configFile = flag.String("c", "bcrmvipbot.json", "config file path")
 )
 
 func main() {
@@ -27,11 +27,11 @@ func main() {
 	daemon.AddCommand(daemon.StringFlag(cmdFlag, "stop"), syscall.SIGTERM, termHandler)
 
 	cntxt := &daemon.Context{
-		PidFileName: piebotConfig.PidFile,
+		PidFileName: bcrmVipConfig.PidFile,
 		PidFilePerm: 0644,
-		LogFileName: piebotConfig.Log.LogFile,
+		LogFileName: bcrmVipConfig.Log.LogFile,
 		LogFilePerm: 0640,
-		WorkDir:     piebotConfig.WorkDir,
+		WorkDir:     bcrmVipConfig.WorkDir,
 		Umask:       027,
 		// Args:        []string{"[piebot]"},
 	}
@@ -56,12 +56,11 @@ func main() {
 	log.Info("-----------------------")
 	log.Info("daemon started")
 
-	loadTemplates()
 	initRunEnv()
 
 	go terminateHelper()
 
-	discordSession, err = discordgo.New("Bot " + piebotConfig.Discord.Token)
+	discordSession, err = discordgo.New("Bot " + bcrmVipConfig.Discord.Token)
 	if err != nil {
 		log.Fatalf("Createing Discrod Session Error: %s", err)
 	}
@@ -79,11 +78,7 @@ func main() {
 	log.Info("Discord Bot is now running...")
 
 	go discordStopHelper()
-	for _, p := range coinPresenters {
-		p.rpc.Start()
-	}
-	registerCmds()
-	pieAutoScanStart()
+	reigsterBotCmdHandler()
 	err = daemon.ServeSignals()
 	if err != nil {
 		log.Info("daemon terminate Error:", err)
@@ -133,8 +128,6 @@ func terminateHelper() {
 func termHandler(sig os.Signal) error {
 	// log.Info("terminating...")
 	log.Info("terminating...")
-	pieAutoScanStop()
-	pieAutoScanWait()
 	dgStop <- struct{}{}
 	<-dgStopDone
 	stop <- struct{}{}
@@ -152,9 +145,6 @@ func initRunEnv() {
 	db.SetLog(log)
 	db.SetSession(mgoSession)
 	rpcclient.SetLog(log)
-	initCoinPresenters()
-	readGuildConfigsFromDB()
-	readGuildSymbolCoinConfigsFromDB()
 }
 
 func initConfigLog() {
@@ -162,7 +152,7 @@ func initConfigLog() {
 	if err != nil {
 		logrus.Fatalf("Read config file error: %s", err)
 	}
-	logTmp, err := ulog.NewSingle(piebotConfig.Log)
+	logTmp, err := ulog.NewSingle(bcrmVipConfig.Log)
 	if err != nil {
 		logrus.Fatalln("Init Log Error:", err)
 	}

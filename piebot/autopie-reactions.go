@@ -22,6 +22,18 @@ func reactionAddEventHandler(s *discordgo.Session, r *discordgo.MessageReactionA
 	if userID == botUserID {
 		return
 	}
+	channel, err := channel(s, r.ChannelID)
+	if err != nil {
+		return
+	}
+	guild, err := guild(s, channel.GuildID)
+	if err != nil {
+		return
+	}
+	member, err := member(s, guild.ID, userID)
+	if member.User.Bot {
+		return
+	}
 
 	emojiName := r.Emoji.Name
 	switch emojiName {
@@ -41,19 +53,20 @@ func reactionAddEventHandler(s *discordgo.Session, r *discordgo.MessageReactionA
 	}
 	switch emojiName {
 	case reactionRefresh:
-		pieAutoInfoRefresh(s, r.ChannelID, msgID, userID)
+		pieAutoInfoRefresh(s, channel, msgID, userID)
 	case reactionStop:
-		pieAutoInfoRemove(s, r.ChannelID, msgID, userID)
+		pieAutoInfoRemove(s, channel, msgID, userID)
 	}
 }
 
-func pieAutoInfoRemove(s *discordgo.Session, channelID, botMsgID, userID string) {
+func pieAutoInfoRemove(s *discordgo.Session, channel *discordgo.Channel, botMsgID, userID string) {
 	pieAutoMsg, err := dbGuild.PieAutoMsg(botMsgID, userID)
 	if err != nil {
 		return
 	}
 	pieAutoID := pieAutoMsg.PieAutoID
 	err = dbGuild.PieAutoRemove(userID, pieAutoID)
+	channelID := channel.ID
 	if err == nil {
 		dbGuild.PieAutoMsgRemove(botMsgID, pieAutoID)
 		embed := &discordgo.MessageEmbed{
@@ -64,13 +77,15 @@ func pieAutoInfoRemove(s *discordgo.Session, channelID, botMsgID, userID string)
 		channelMessageEditComplx(s, channelID, botMsgID, "", embed)
 	}
 	// Error:HTTP 403 Forbidden, {"code": 50003, "message": "Cannot execute action on a DM channel"}
-	err = s.MessageReactionRemove(channelID, botMsgID, reactionStop, userID)
-	if err != nil {
-		log.Errorf("pieAutoInfoRemove:MessageReactionRemove Error:%s[cID:%s,mID:%s,uID:%s]", err, channelID, botMsgID, userID)
+	if channel.Type != discordgo.ChannelTypeDM {
+		err = s.MessageReactionRemove(channelID, botMsgID, reactionStop, userID)
+		if err != nil {
+			log.Errorf("pieAutoInfoRemove:MessageReactionRemove Error:%s[cID:%s,mID:%s,uID:%s]", err, channelID, botMsgID, userID)
+		}
 	}
 }
 
-func pieAutoInfoRefresh(s *discordgo.Session, channelID, botMsgID, userID string) {
+func pieAutoInfoRefresh(s *discordgo.Session, channel *discordgo.Channel, botMsgID, userID string) {
 	pieAutoMsg, err := dbGuild.PieAutoMsg(botMsgID, userID)
 	if err != nil {
 		return
@@ -80,6 +95,7 @@ func pieAutoInfoRefresh(s *discordgo.Session, channelID, botMsgID, userID string
 	if err != nil {
 		return
 	}
+	channelID := channel.ID
 	if pieAuto == nil {
 		embed := &discordgo.MessageEmbed{
 			Title:       fmt.Sprintf("PieAuto-Task#%s", pieAutoID),
@@ -99,9 +115,11 @@ func pieAutoInfoRefresh(s *discordgo.Session, channelID, botMsgID, userID string
 		}
 	}
 	// Error:HTTP 403 Forbidden, {"code": 50003, "message": "Cannot execute action on a DM channel"}
-	err = s.MessageReactionRemove(channelID, botMsgID, reactionRefresh, userID)
-	if err != nil {
-		log.Errorf("pieAutoInfoRefresh:MessageReactionRemove Error:%s[cID:%s,mID:%s,uID:%s]", err, channelID, botMsgID, userID)
+	if channel.Type != discordgo.ChannelTypeDM {
+		err = s.MessageReactionRemove(channelID, botMsgID, reactionRefresh, userID)
+		if err != nil {
+			log.Errorf("pieAutoInfoRefresh:MessageReactionRemove Error:%s[cID:%s,mID:%s,uID:%s]", err, channelID, botMsgID, userID)
+		}
 	}
 }
 

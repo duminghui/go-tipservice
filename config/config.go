@@ -19,11 +19,13 @@ type Pie struct {
 	EachMinReceive float64 `json:"eachminreceive"`
 }
 
+//VipGuildID:for control vip set command
 type CoinInfo struct {
 	Name                     string                `json:"name"`
 	Symbol                   string                `json:"symbol"`
 	Website                  string                `json:"website"`
 	IconURL                  string                `json:"iconUrl"`
+	VipGuildID               string                `json:"vipguildid"`
 	Database                 string                `json:"database"`
 	TxExplorerURL            string                `json:"txexplorer"`
 	MinConfirmations4Deposit int64                 `json:"minConfirmations4Deposit"`

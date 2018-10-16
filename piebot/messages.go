@@ -42,61 +42,26 @@ type cmdInfo struct {
 	name         string
 	managerCmd   bool
 	channelLimit bool
+	guildLimit   bool
 	handler      cmdGuildSymbolHandler
 }
 
 var cmdInfoMap = make(map[string]*cmdInfo)
 
-var cmdChannel = "channel"
+func registerCmds() {
+	registerSymbolCmds()
+	registerSymbolPieAutoCmd()
+	registerSymbolVipCmds()
+}
 
-func reigsterBotCmdHandler() {
-	help := &cmdInfo{
-		name:         "help",
-		channelLimit: true,
-		handler:      (*guildSymbolPresenter).cmdPieHelperHandler,
+func registerSymbolCmd(name string, channelLimit, managerCmd, guildLimit bool, handler cmdGuildSymbolHandler) {
+	cmdInfo := &cmdInfo{
+		name:         name,
+		channelLimit: channelLimit,
+		managerCmd:   managerCmd,
+		handler:      handler,
 	}
-	cmdInfoMap[help.name] = help
-	pie := &cmdInfo{
-		name:         "pie",
-		channelLimit: true,
-		handler:      (*guildSymbolPresenter).cmdPieHandler,
-	}
-	cmdInfoMap[pie.name] = pie
-	deposit := &cmdInfo{
-		name:         "deposit",
-		channelLimit: true,
-		handler:      (*guildSymbolPresenter).cmdDepositHandler,
-	}
-	cmdInfoMap[deposit.name] = deposit
-	bal := &cmdInfo{
-		name:         "bal",
-		channelLimit: true,
-		handler:      (*guildSymbolPresenter).cmdBalHandler,
-	}
-	cmdInfoMap[bal.name] = bal
-	withdraw := &cmdInfo{
-		name:         "withdraw",
-		channelLimit: true,
-		handler:      (*guildSymbolPresenter).cmdWithdrawHandler,
-	}
-	cmdInfoMap[withdraw.name] = withdraw
-
-	setChannel := &cmdInfo{
-		name:         "channel",
-		managerCmd:   true,
-		channelLimit: false,
-		handler:      (*guildSymbolPresenter).cmdChannelHandler,
-	}
-	cmdInfoMap[setChannel.name] = setChannel
-
-	pieAuto := &cmdInfo{
-		name:         "pieAuto",
-		managerCmd:   true,
-		channelLimit: false,
-		handler:      (*guildSymbolPresenter).cmdPieAutoHandler,
-	}
-	cmdInfoMap[pieAuto.name] = pieAuto
-
+	cmdInfoMap[name] = cmdInfo
 }
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
@@ -170,13 +135,20 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 	msgParts.prefix = pfx
 
-	_, ok := coinInfos[string(sbl)]
+	coinInfo, ok := coinInfos[string(sbl)]
 	if !ok {
 		log.Errorf("No Coin Infos for:[%s]", sbl)
 		return
 	}
+	isInGuild := false
+	if coinInfo.VipGuildID == guild.ID {
+		isInGuild = true
+	}
 	cmd := strings.Replace(cntParts[0], string(pfx), "", 1)
 	if cmdInfo, ok := cmdInfoMap[cmd]; ok {
+		if cmdInfo.guildLimit && !isInGuild {
+			return
+		}
 		gcc := sccm[sbl]
 		isInChannel := gcc.inChannels(m.ChannelID)
 		if cmdInfo.channelLimit && !isInChannel {

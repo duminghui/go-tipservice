@@ -54,7 +54,7 @@ type guildConfigMap map[string]*guildConfig
 var guildConfigs = make(guildConfigMap)
 
 func readGuildConfigsFromDB() {
-	guildConfigList, err := dbGuild.GuildConfigManagerList()
+	guildConfigList, err := dbGuild.GuildConfigList()
 	if err != nil {
 		return
 	}

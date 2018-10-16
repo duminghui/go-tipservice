@@ -28,8 +28,7 @@ piebot/pid
 piebot/piebot.pid
 piebot/piebot.json
 
-txserverv1/config.json
-txserverv1/log
-txserverv1/logs
-txserverv1/txserverv1
-txserverv1/pid
+bcrmvimbot/pid
+bcrmvipbot/logs
+bcrmvipbot/bcrmvipbot
+bcrmvipbot/bcrmvipbot.json
