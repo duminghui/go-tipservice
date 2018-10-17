@@ -35,9 +35,9 @@ func loadTemplates() {
 		panic(err)
 	}
 	msgTmpl = tmpl
-	for _, t := range tmpl.Templates() {
-		log.Infof("Template Name:%s", t.Name())
-	}
+	// for _, t := range tmpl.Templates() {
+	// 	log.Infof("Template Name:%s", t.Name())
+	// }
 }
 
 func msgFromTmpl(tmplName string, data interface{}) string {

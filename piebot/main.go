@@ -66,7 +66,7 @@ func main() {
 		log.Fatalf("Createing Discrod Session Error: %s", err)
 	}
 
-	discordSession.State.MaxMessageCount = 200
+	// discordSession.State.MaxMessageCount = 200
 	discordSession.AddHandler(messageCreate)
 	discordSession.AddHandler(reactionAddEventHandler)
 	// discordSession.AddHandler(reactionRemoveEventHandler)

@@ -6,11 +6,14 @@ import (
 )
 
 var (
-	reactionVipID = "501300710839943169"
 	reactionCheck = "\U00002705"
 )
 
 func reactionAddEventHandler(s *discordgo.Session, r *discordgo.MessageReactionAdd) {
+	log.Info(r.Emoji.ID, " ", bcrmVipConfig.Discord.VipFlagEmojiID)
+	if true {
+		return
+	}
 	if r.Emoji.ID != bcrmVipConfig.Discord.VipFlagEmojiID {
 		return
 	}
