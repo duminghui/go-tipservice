@@ -87,6 +87,9 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 	gc := gc(guildID)
+	if gc == nil {
+		return
+	}
 	isManager := gc.isBotManager(s, guild, m.Author.ID)
 	msgParts := &msgParts{
 		s:         s,

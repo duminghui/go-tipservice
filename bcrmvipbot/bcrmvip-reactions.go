@@ -10,10 +10,34 @@ var (
 )
 
 func reactionAddEventHandler(s *discordgo.Session, r *discordgo.MessageReactionAdd) {
-	if r.Emoji.ID != bcrmVipConfig.Discord.VipFlagEmojiID {
+	vipFlagEmojiID := bcrmVipConfig.Discord.VipFlagEmojiID
+	emoji := r.Emoji
+	emojiAPIName := emoji.APIName()
+	emojiID := r.Emoji.ID
+	opUserID := r.UserID
+	msgID := r.MessageID
+	channelID := r.ChannelID
+	channelPoints, err := dbBcrm.VipChannelPointsByChannelID(channelID)
+	if err != nil {
+		if emojiID == vipFlagEmojiID {
+			err = s.MessageReactionRemove(channelID, msgID, emojiAPIName, opUserID)
+			if err != nil {
+				log.Error(err)
+			}
+		}
 		return
 	}
-	channelID := r.ChannelID
+	rolePointsList, err := dbBcrm.VipRolePointsList()
+	if len(rolePointsList) == 0 {
+		if emojiID == vipFlagEmojiID {
+			err = s.MessageReactionRemove(channelID, msgID, emojiAPIName, opUserID)
+			if err != nil {
+				log.Error(err)
+			}
+		}
+		return
+	}
+
 	channel, err := channel(s, channelID)
 	if err != nil {
 		return
@@ -21,7 +45,17 @@ func reactionAddEventHandler(s *discordgo.Session, r *discordgo.MessageReactionA
 	if channel.Type == discordgo.ChannelTypeDM {
 		return
 	}
-	msgID := r.MessageID
+	emojiName := r.Emoji.Name
+	if emojiName == reactionCheck && opUserID != discordSession.State.User.ID {
+		err = s.MessageReactionRemove(channelID, msgID, reactionCheck, opUserID)
+		if err != nil {
+			log.Error(err)
+		}
+		return
+	}
+	if emojiID != bcrmVipConfig.Discord.VipFlagEmojiID {
+		return
+	}
 	msg, err := message(s, channelID, msgID)
 	if err != nil {
 		return
@@ -40,7 +74,6 @@ func reactionAddEventHandler(s *discordgo.Session, r *discordgo.MessageReactionA
 	if err != nil {
 		return
 	}
-	opUserID := r.UserID
 	opMember, err := member(s, guild.ID, opUserID)
 	if opMember.User.Bot {
 		return
@@ -50,10 +83,6 @@ func reactionAddEventHandler(s *discordgo.Session, r *discordgo.MessageReactionA
 		return
 	}
 	if !gc.isBotManager(s, guild, opUserID) {
-		return
-	}
-	channelPoints, err := dbBcrm.VipChannelPointsByChannelID(channelID)
-	if err != nil {
 		return
 	}
 	userPoints, err := dbBcrm.VipUserPointsChange(msgAuthor.ID, channelPoints.Points)
@@ -71,10 +100,19 @@ func reactionAddEventHandler(s *discordgo.Session, r *discordgo.MessageReactionA
 }
 
 func reactionRemoveEventHandler(s *discordgo.Session, r *discordgo.MessageReactionRemove) {
+	channelID := r.ChannelID
+	channelPoints, err := dbBcrm.VipChannelPointsByChannelID(channelID)
+	if err != nil {
+		return
+	}
+	rolePointsList, err := dbBcrm.VipRolePointsList()
+	if len(rolePointsList) == 0 {
+		return
+	}
+
 	if r.Emoji.ID != bcrmVipConfig.Discord.VipFlagEmojiID {
 		return
 	}
-	channelID := r.ChannelID
 	channel, err := channel(s, channelID)
 	if err != nil {
 		return
@@ -116,10 +154,6 @@ func reactionRemoveEventHandler(s *discordgo.Session, r *discordgo.MessageReacti
 		return
 	}
 	if !gc.isBotManager(s, guild, opUserID) {
-		return
-	}
-	channelPoints, err := dbBcrm.VipChannelPointsByChannelID(channelID)
-	if err != nil {
 		return
 	}
 	userPoints, err := dbBcrm.VipUserPointsChange(msgAuthor.ID, -channelPoints.Points)

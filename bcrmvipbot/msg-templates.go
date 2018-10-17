@@ -17,7 +17,7 @@ type tmplValueMap map[string]interface{}
 var msgTmpl *template.Template
 
 func loadTemplates() {
-	dir, err := ioutil.TempDir("", "piebottemplates")
+	dir, err := ioutil.TempDir("", "bcrmvipbottemplates")
 	if err != nil {
 		panic(err)
 	}

@@ -212,7 +212,9 @@ func (db *DBSymbol) VipChannelPointsByChannelID(channelID string) (*VipChannelPo
 	}
 	err := db.cVipChannelPoints(session).Find(selector).One(channelPoints)
 	if err != nil {
-		log.Errorf("VipChannelPointsByChannelID Error:%s:%s", err, channelID)
+		if err != mgo.ErrNotFound {
+			log.Errorf("VipChannelPointsByChannelID Error:%s:%s", err, channelID)
+		}
 		return nil, err
 	}
 	return channelPoints, nil
