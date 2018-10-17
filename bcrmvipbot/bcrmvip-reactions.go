@@ -11,9 +11,7 @@ var (
 
 func reactionAddEventHandler(s *discordgo.Session, r *discordgo.MessageReactionAdd) {
 	log.Info(r.Emoji.ID, " ", bcrmVipConfig.Discord.VipFlagEmojiID)
-	if true {
-		return
-	}
+	log.Info(r.Emoji.ID == bcrmVipConfig.Discord.VipFlagEmojiID)
 	if r.Emoji.ID != bcrmVipConfig.Discord.VipFlagEmojiID {
 		return
 	}
