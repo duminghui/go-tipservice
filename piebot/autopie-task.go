@@ -64,11 +64,12 @@ func pieAutoListSend(list []*db.PieAuto) {
 }
 
 type pieAutoReceiverGenerator struct {
-	guildID      string
-	channelID    string
-	pieerID      string
-	roleID       string
-	isOnlineUser bool
+	pieAutoTaskID string
+	guildID       string
+	channelID     string
+	pieerID       string
+	roleID        string
+	isOnlineUser  bool
 }
 
 func (r *pieAutoReceiverGenerator) Receivers() ([]*discordgo.User, error) {
@@ -82,6 +83,7 @@ func (r *pieAutoReceiverGenerator) Receivers() ([]*discordgo.User, error) {
 	guildName := guild.Name
 	gc := guildConfigs.gc(guildID)
 	excludeRoles := strings.Join(gc.ExcludeRoles, "|")
+	log.Infof("PieAutoTask #%s will send to [%s#%s] %d members", r.pieAutoTaskID, guildName, guildID, len(guild.Members))
 	for _, member := range guild.Members {
 		userID := member.User.ID
 		switch {
@@ -93,7 +95,7 @@ func (r *pieAutoReceiverGenerator) Receivers() ([]*discordgo.User, error) {
 		userName := member.User.Username
 		userPermission, err := userChannelPermissions(s, userID, r.channelID)
 		if err != nil {
-			log.Errorf("taksauto get premission Error:%s[%s()][%s(%s)]", err, userName, guildName, guildID)
+			log.Errorf("Pie Auto taks get premission Error:%s[%s()][%s(%s)]", err, userName, guildName, guildID)
 			continue
 		}
 		if (userPermission & discordgo.PermissionReadMessages) != discordgo.PermissionReadMessages {
@@ -123,7 +125,7 @@ func (r *pieAutoReceiverGenerator) Receivers() ([]*discordgo.User, error) {
 		isOnline := false
 		presence, err := presence(s, guild.ID, userID)
 		if err != nil {
-			log.Errorf("autopie get Presence Error:%s[%s(%s)][%s(%s)]", err, member.User.Username, userID, guild.Name, guild.ID)
+			log.Errorf("PieAuto get Presence Error:%s[%s(%s)][%s(%s)]", err, member.User.Username, userID, guild.Name, guild.ID)
 			continue
 		}
 		if presence.Status == discordgo.StatusOnline || presence.Status == discordgo.StatusIdle {
@@ -175,7 +177,7 @@ func pieSend(pieAuto *db.PieAuto) {
 			pieer := report.pieer
 			err := dbGuild.PieAutoRemove(pieAuto.UserID, pieAutoID)
 			if err != nil {
-				log.Infof("[%s]PieAutoRemoveError:[%s]", symbol, err)
+				log.Errorf("[%s]PieAutoRemoveError:[%s]", symbol, err)
 			}
 			msg := msgFromTmpl("pieAutoTaskNoAmountRemoveInfo", tmplValueMap{
 				"AutoPieID":         pieAutoID,

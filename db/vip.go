@@ -3,6 +3,7 @@ package db
 
 import (
 	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 )
 
 func (db *DBSymbol) cVipUserPoints(s *mgo.Session) *mgo.Collection {
@@ -12,7 +13,11 @@ func (db *DBSymbol) cVipUserPoints(s *mgo.Session) *mgo.Collection {
 type VipUserPoints struct {
 	UserID   string `bson:"userid,omitempty"`
 	Points   int64  `bson:"points,omitempty"`
-	RoleName string `bosn:"rolename,omitempty"`
+	RoleName string `bson:"rolename,omitempty"`
+}
+
+type VipUserPointsPoints struct {
+	Points int64 `bson:"points"`
 }
 
 func (db *DBSymbol) VipUserPointsRoleName(userID, roleName string) error {
@@ -24,9 +29,9 @@ func (db *DBSymbol) VipUserPointsRoleName(userID, roleName string) error {
 	data := &VipUserPoints{
 		RoleName: roleName,
 	}
-	err := db.cVipUserPoints(session).Update(selector, data)
+	err := db.cVipUserPoints(session).Update(selector, bson.M{"$set": data})
 	if err != nil {
-		log.Infof("VipUserPointsRoleName Error:%s:%s:%s", err, userID, roleName)
+		log.Errorf("VipUserPointsRoleName Error:%s:%s:%s", err, userID, roleName)
 		return err
 	}
 	return nil
@@ -35,43 +40,66 @@ func (db *DBSymbol) VipUserPointsRoleName(userID, roleName string) error {
 func (db *DBSymbol) VipUserPointsChange(userID string, points int64) (*VipUserPoints, error) {
 	session := mgoSession.Clone()
 	defer session.Close()
-	userPoints, err := db.VipUserPoints(session, userID)
+	userPoints, err := db.VipUserPointsByUserID(session, userID)
+	col := db.cVipUserPoints(session)
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			if points < 0 {
+				points = 0
+			}
+			if points == 0 {
+				return userPoints, nil
+			}
+			data := &VipUserPoints{
+				UserID:   userID,
+				Points:   points,
+				RoleName: "Not VIP",
+			}
+			err := col.Insert(data)
+			if err != nil {
+				return nil, err
+			}
+			return data, nil
+		}
+		return nil, err
+	}
 	if points == 0 {
-		return userPoints, err
+		return userPoints, nil
 	}
-	finalPoints := points
-	if userPoints != nil {
-		finalPoints = userPoints.Points + points
-	}
+	finalPoints := userPoints.Points + points
 	if finalPoints < 0 {
 		finalPoints = 0
 	}
+	userPoints.Points = finalPoints
 	selector := &VipUserPoints{
 		UserID: userID,
 	}
-	data := &VipUserPoints{
-		UserID: userID,
+	data := &VipUserPointsPoints{
 		Points: finalPoints,
 	}
-	_, err = db.cVipUserPoints(session).Upsert(selector, data)
+	err = db.cVipUserPoints(session).Update(selector, bson.M{"$set": data})
 	if err != nil {
 		log.Infof("VipUserPointsChange Error:%s:%s:%d", err, userID, points)
 		return nil, err
 	}
-	return data, nil
+	return userPoints, nil
 }
 
-func (db *DBSymbol) VipUserPoints(s *mgo.Session, userID string) (*VipUserPoints, error) {
+func (db *DBSymbol) VipUserPointsByUserID(s *mgo.Session, userID string) (*VipUserPoints, error) {
 	session, colser := session(s)
 	defer colser()
 	selector := &VipUserPoints{
 		UserID: userID,
 	}
 	userPoints := new(VipUserPoints)
-	err := db.cVipUserPoints(session).Find(selector).One(userPoints)
+	err := db.cVipUserPoints(session).Find(selector).One(&userPoints)
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return nil, nil
+			return &VipUserPoints{
+				UserID:   userID,
+				Points:   0,
+				RoleName: "Not VIP",
+			}, err
 		}
 		log.Infof("VipUserPoints Error:%s:%s", err, userID)
 		return nil, err
@@ -132,7 +160,7 @@ func (db *DBSymbol) cVipChannelPoints(s *mgo.Session) *mgo.Collection {
 }
 
 type VipChannelPoints struct {
-	ChannelID string `bson:"channel,omitempty"`
+	ChannelID string `bson:"channelid,omitempty"`
 	Points    int64  `bson:"points,omitempty"`
 }
 
@@ -169,8 +197,23 @@ func (db *DBSymbol) VipChannelPointsList() ([]*VipChannelPoints, error) {
 	channelPointsList := make([]*VipChannelPoints, 0)
 	err := db.cVipChannelPoints(session).Find(nil).All(&channelPointsList)
 	if err != nil {
-		log.Infof("VipChannelPointsList Error:%s", err)
+		log.Errorf("VipChannelPointsList Error:%s", err)
 		return nil, err
 	}
 	return channelPointsList, nil
+}
+
+func (db *DBSymbol) VipChannelPointsByChannelID(channelID string) (*VipChannelPoints, error) {
+	session := mgoSession.Clone()
+	defer session.Close()
+	channelPoints := new(VipChannelPoints)
+	selector := &VipChannelPoints{
+		ChannelID: channelID,
+	}
+	err := db.cVipChannelPoints(session).Find(selector).One(channelPoints)
+	if err != nil {
+		log.Errorf("VipChannelPointsByChannelID Error:%s:%s", err, channelID)
+		return nil, err
+	}
+	return channelPoints, nil
 }

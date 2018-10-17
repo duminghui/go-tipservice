@@ -65,10 +65,9 @@ func main() {
 		log.Fatalf("Createing Discrod Session Error: %s", err)
 	}
 
-	discordSession.State.MaxMessageCount = 200
-	discordSession.AddHandler(messageCreate)
+	// discordSession.State.MaxMessageCount = 200
 	discordSession.AddHandler(reactionAddEventHandler)
-	// discordSession.AddHandler(reactionRemoveEventHandler)
+	discordSession.AddHandler(reactionRemoveEventHandler)
 
 	err = discordSession.Open()
 	if err != nil {
@@ -78,7 +77,6 @@ func main() {
 	log.Info("Discord Bot is now running...")
 
 	go discordStopHelper()
-	reigsterBotCmdHandler()
 	err = daemon.ServeSignals()
 	if err != nil {
 		log.Info("daemon terminate Error:", err)

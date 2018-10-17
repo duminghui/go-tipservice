@@ -16,7 +16,7 @@ func registerSymbolVipCmds() {
 	registerSymbolCmd("vipRolePoints", false, true, true, cmdVipRolePointsHandler)
 	registerSymbolCmd("vipChannels", false, true, true, cmdVipChannelsHandler)
 	registerSymbolCmd("vipChannelPoints", false, true, true, cmdVipChannelPointsHandler)
-	registerSymbolCmd("vipUserPoints", false, true, true, cmdVipUserPointsHandler)
+	registerSymbolCmd("vipPoints", false, true, true, cmdVipPointsHandler)
 }
 
 var cmdVipHandler = (*guildSymbolPresenter).cmdVipHandler
@@ -25,7 +25,7 @@ func (p *guildSymbolPresenter) cmdVipHandler(parts *msgParts) {
 	userID := parts.m.Author.ID
 	userName := parts.m.Author.Username
 	userMention := parts.m.Author.Mention()
-	userPoints, _ := p.dbSymbol.VipUserPoints(nil, userID)
+	userPoints, _ := p.dbSymbol.VipUserPointsByUserID(nil, userID)
 	msg := fmt.Sprintf("%s Your VIP Points:", userMention)
 	embed := p.userPoints2embed(userPoints, userName)
 	parts.channelMessageSendComplex(msg, embed)
@@ -199,20 +199,20 @@ func (p *guildSymbolPresenter) cmdVipChannelPointsHandler(parts *msgParts) {
 	parts.channelMessageSendComplex(msg, msgEmbed)
 }
 
-var cmdVipUserPointsHandler = (*guildSymbolPresenter).cmdVipUserPointsHandler
+var cmdVipPointsHandler = (*guildSymbolPresenter).cmdVipPointsHandler
 
-func (p *guildSymbolPresenter) cmdVipUserPointsHandler(parts *msgParts) {
+func (p *guildSymbolPresenter) cmdVipPointsHandler(parts *msgParts) {
 	contents := parts.contents
 	contentCount := len(contents)
 	userMention := parts.m.Author.Mention()
 	cmdPrefix := parts.prefix
 	tmplValue := &tmplValueMap{
 		"IsShowUsageHint": true,
-		"CmdName":         "vipUserPoints",
+		"CmdName":         "vipPoints",
 		"UserMention":     userMention,
 		"Prefix":          string(cmdPrefix),
 	}
-	usageMsg := msgFromTmpl("vipUserPointsUsage", tmplValue)
+	usageMsg := msgFromTmpl("vipPointsUsage", tmplValue)
 	if contentCount == 0 {
 		parts.channelMessageSend(usageMsg)
 		return
@@ -225,36 +225,39 @@ func (p *guildSymbolPresenter) cmdVipUserPointsHandler(parts *msgParts) {
 		parts.channelMessageSend(usageMsg)
 		return
 	}
-	userID := parts.m.Mentions[0].ID
-	userName := parts.m.Mentions[0].Username
+	user := parts.m.Mentions[0]
+	if user.Bot {
+		msg := fmt.Sprintf("%s can't give VIP points to a bot", userMention)
+		parts.channelMessageSend(msg)
+		return
+	}
+	userID := user.ID
+	userName := user.Username
+
 	points, err := strconv.ParseInt(contents[1], 10, 64)
 	if err != nil {
 		parts.channelMessageSend(usageMsg)
 		return
 	}
-	if points < 0 {
-		parts.channelMessageSend(usageMsg)
-		return
-	}
 	userPoints, err := p.dbSymbol.VipUserPointsChange(userID, points)
 	if err != nil {
+		log.Info(err)
 		return
 	}
+	p.setVipUserRole(parts.s, parts.guild.ID, userID, userPoints)
 	embed := p.userPoints2embed(userPoints, userName)
 	parts.channelMessageSendComplex("", embed)
 }
 
 func (p *guildSymbolPresenter) userPoints2embed(userPoints *db.VipUserPoints, userName string) *discordgo.MessageEmbed {
-	showPoints := int64(0)
-	if userPoints != nil {
-		showPoints = userPoints.Points
-	}
+	showPoints := userPoints.Points
 	embedAuthor := embedAuthor(p.coinInfo.Name, p.coinInfo.Website, "")
 	embedThumbnail := embedThumbnail(p.coinInfo.IconURL)
 	title := fmt.Sprintf("%s's VIP Points", userName)
-	fields := embedFields(1)
+	fields := embedFields(2)
 	pointsField := fmt.Sprintf("%d", showPoints)
-	fields = append(fields, mef("Points", pointsField, false))
+	fields = append(fields, mef("Points", pointsField, true))
+	fields = append(fields, mef("VIP Role", userPoints.RoleName, true))
 	embed := embed(&embedInfo{
 		title: title,
 		color: 0x00ff00,

@@ -65,7 +65,8 @@ func member(s *discordgo.Session, guildID, userID string) (*discordgo.Member, er
 
 // UserChannelPermissions
 func userChannelPermissions(s *discordgo.Session, userID, channelID string) (int, error) {
-	permission, err := s.State.UserChannelPermissions(userID, channelID)
+	// permission, err := s.State.UserChannelPermissions(userID, channelID)
+	permission, err := s.UserChannelPermissions(userID, channelID)
 	if err != nil {
 		log.Errorf("userChannelPermissions Error:%s,uid:%s,cid:%s", err, userID, channelID)
 		// s.UserChannelPermissions same as above

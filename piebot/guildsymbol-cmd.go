@@ -237,6 +237,10 @@ func (p *guildSymbolPresenter) cmdPieHelperHandler(parts *msgParts) {
 	withdrawMinAmount, _ := amount.FromFloat64(coinConfig.Withdraw.Min)
 	minTxFee, _ := amount.FromFloat64(coinConfig.Withdraw.TxFee)
 	txFeePercent := coinConfig.Withdraw.TxFeePercent
+	isVipOn := false
+	if p.coinInfo.VipGuildID == parts.guild.ID {
+		isVipOn = true
+	}
 	tmplValue := &tmplValueMap{
 		"IsShowUsageHint": false,
 		"CmdName":         "help",
@@ -248,6 +252,7 @@ func (p *guildSymbolPresenter) cmdPieHelperHandler(parts *msgParts) {
 		"TxFeePercent":    txFeePercent * 100,
 		"TxFeeMin":        minTxFee,
 		"IsManager":       isManager,
+		"IsVipOn":         isVipOn,
 	}
 	helpInfo := msgFromTmpl("helpUsage", tmplValue)
 	parts.channelMessageSend(helpInfo)
@@ -274,6 +279,7 @@ func (r *pieReceiverGeneratorSymbol) Receivers() ([]*discordgo.User, error) {
 	gc := guildConfigs.gc(guildID)
 	excludeRoles := strings.Join(gc.ExcludeRoles, "|")
 	s := r.s
+	log.Infof("Pie will send to [%s#%s] %d members", guildID, guildName, len(guild.Members))
 	for _, member := range guild.Members {
 		userID := member.User.ID
 		switch {
@@ -394,7 +400,6 @@ func (p *guildSymbolPresenter) cmdPieHandler(parts *msgParts) {
 	}
 
 	report, err := pie.pie()
-	log.Infof("%#v", report)
 	receiverCount := 0
 	if report != nil {
 		receiverCount = report.receiverCount

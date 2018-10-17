@@ -39,8 +39,22 @@
 {{template "balUsage" .}}
 {{template "depositUsage" .}}
 {{template "withdrawUsage" . }}
-{{- if .IsManager}}{{"\n"}}{{template "channelUsage" .}}{{end}}
-{{- if .IsManager}}{{"\n"}}{{template "pieAutoUsage" .}}{{end}}
+{{if .IsManager -}}
+{{template "channelUsage" .}}
+***{{.Prefix}}pieAuto -s <online|all> -i <interval> -a <amount> -c <cycleTimes> -e <aftertime> <#channel> <@role>***
+  use `{{.Prefix}}pieAuto` go get more informations
+{{- end}}
+{{if .IsVipOn -}}
+------------
+{{template "vipUsage" .}}
+{{if .IsManager -}}
+{{template "vipPointsUsage" .}}
+{{template "vipRolesUsage" .}}
+{{template "vipRolePointsUsage" .}}
+{{template "vipChannelsUsage" .}}
+{{template "vipChannelPointsUsage" .}}
+{{- end}}
+{{- end}}
 {{- end}}
 
 {{define "pieMainManagerUsage" -}}
@@ -125,7 +139,7 @@
 
 {{define "vipUsage" -}}
 ***{{.Prefix}}vip***
-  Show user's VIP points
+  Show user's `{{.Symbol}}` VIP points
 {{- end}}
 
 {{define "vipRolesUsage" -}}
@@ -152,9 +166,9 @@
   <points> must >= 0, if == 0, delete this channel's points
 {{- end}}
 
-{{define "vipUserPointsUsage" -}}
+{{define "vipPointsUsage" -}}
 {{if .IsShowUsageHint}}{{template "usage" . }}{{end -}}
-***{{.Prefix}}vipUserPoints <@user> <points>***
-  add or sub user's vip points
+***{{.Prefix}}vipPoints <@user> <points>***
+  add or sub user's VIP points
   <points> >0: add points, <0: sub <points>, =0:ignore
 {{- end}}

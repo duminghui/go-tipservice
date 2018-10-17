@@ -4,6 +4,7 @@
         "symbol":"BTC",
         "website":"",
         "iconUrl":"",
+        "vipguildid":"",
         "database":"btc",
         "txexplorer":"",
         "minConfirmations4Deposit":6,
