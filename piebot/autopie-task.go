@@ -108,10 +108,15 @@ func (r *pieAutoReceiverGenerator) Receivers() ([]*discordgo.User, error) {
 				isInExcludeRoles = true
 				break
 			}
-			if r.roleID == role || r.roleID == "" {
+			if r.roleID == role {
 				isInRoles = true
 			}
 		}
+
+		if r.roleID == "" {
+			isInRoles = true
+		}
+
 		if isInExcludeRoles {
 			continue
 		}
