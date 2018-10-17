@@ -56,6 +56,7 @@ func main() {
 	log.Info("-----------------------")
 	log.Info("daemon started")
 
+	loadTemplates()
 	initRunEnv()
 
 	go terminateHelper()
@@ -65,7 +66,10 @@ func main() {
 		log.Fatalf("Createing Discrod Session Error: %s", err)
 	}
 
+	initPresenter()
+	registerCmds()
 	// discordSession.State.MaxMessageCount = 200
+	discordSession.AddHandler(messageCreate)
 	discordSession.AddHandler(reactionAddEventHandler)
 	discordSession.AddHandler(reactionRemoveEventHandler)
 
@@ -74,7 +78,7 @@ func main() {
 		log.Fatalf("Opening Discord connection error:%s", err)
 	}
 
-	log.Info("Discord Bot is now running...")
+	log.Info("BCRM VIP Bot is now running...")
 
 	go discordStopHelper()
 	err = daemon.ServeSignals()

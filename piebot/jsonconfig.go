@@ -46,7 +46,7 @@ func readConfig(file string) error {
 	}
 
 	coinInfosFile := piebotConfig.CoinInfosFile
-	log.Infof("Coin Infos Config File:%s", dbConfigFile)
+	log.Infof("Coin Infos Config File:%s", coinInfosFile)
 	_, err = config.FromFile(coinInfosFile, &coinInfos)
 	if err != nil {
 		return fmt.Errorf("CoinInfosConfig:%s[%s]", err, coinInfosFile)

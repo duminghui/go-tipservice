@@ -17,15 +17,17 @@ type Discord struct {
 }
 
 type BcrmVipConfig struct {
-	Discord      *Discord     `json:"discord"`
-	WorkDir      string       `json:"workDir"`
-	PidFile      string       `json:"pidFile"`
-	Log          *ulog.Config `json:"log"`
-	DBConfigFile string       `json:"dbConfigFile"`
+	Discord       *Discord     `json:"discord"`
+	WorkDir       string       `json:"workDir"`
+	PidFile       string       `json:"pidFile"`
+	Log           *ulog.Config `json:"log"`
+	DBConfigFile  string       `json:"dbConfigFile"`
+	CoinInfosFile string       `json:"coinInfosFile"`
 }
 
 var bcrmVipConfig *BcrmVipConfig
 var dbConfig *umgo.ConnConfig
+var coinInfo *config.CoinInfo
 
 func readConfig(file string) error {
 	log.Infof("BcrmVipBot Config File:%s", file)
@@ -43,5 +45,13 @@ func readConfig(file string) error {
 		return fmt.Errorf("DBConfig:%s[%s]", err, dbConfigFile)
 	}
 
+	coinInfos := make(map[string]*config.CoinInfo)
+	coinInfosFile := bcrmVipConfig.CoinInfosFile
+	log.Infof("Coin Infos Config File:%s", coinInfosFile)
+	_, err = config.FromFile(coinInfosFile, &coinInfos)
+	if err != nil {
+		return fmt.Errorf("CoinInfosConfig:%s[%s]", err, coinInfosFile)
+	}
+	coinInfo = coinInfos["BCRM"]
 	return nil
 }

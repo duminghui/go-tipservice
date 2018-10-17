@@ -47,13 +47,6 @@
 {{if .IsVipOn -}}
 ------------
 {{template "vipUsage" .}}
-{{if .IsManager -}}
-{{template "vipPointsUsage" .}}
-{{template "vipRolesUsage" .}}
-{{template "vipRolePointsUsage" .}}
-{{template "vipChannelsUsage" .}}
-{{template "vipChannelPointsUsage" .}}
-{{- end}}
 {{- end}}
 {{- end}}
 
@@ -139,36 +132,5 @@
 
 {{define "vipUsage" -}}
 ***{{.Prefix}}vip***
-  Show user's `{{.Symbol}}` VIP points
-{{- end}}
-
-{{define "vipRolesUsage" -}}
-***{{.Prefix}}vipRoles***
-  Show VIP roles
-{{- end}}
-
-{{define "vipRolePointsUsage" -}}
-{{if .IsShowUsageHint}}{{template "usage" . }}{{end -}}
-***{{.Prefix}}vipRolePoints <@role> <points>***
-  Config that how many points do that <@role> to upgrade
-  <points> must >= 0, if == 0, delete this role's points
-{{- end}}
-
-{{define "vipChannelsUsage" -}}
-***{{.Prefix}}vipChannels***
-    Show Channel's give points that when completed task
-{{- end}}
-
-{{define "vipChannelPointsUsage" -}}
-{{if .IsShowUsageHint}}{{template "usage" . }}{{end -}}
-***{{.Prefix}}vipChannelPoints <#channel> <points>***
-  Config show many points to give when completed channel's task
-  <points> must >= 0, if == 0, delete this channel's points
-{{- end}}
-
-{{define "vipPointsUsage" -}}
-{{if .IsShowUsageHint}}{{template "usage" . }}{{end -}}
-***{{.Prefix}}vipPoints <@user> <points>***
-  add or sub user's VIP points
-  <points> >0: add points, <0: sub <points>, =0:ignore
+  Show user's `{{.BCRM}}` VIP points
 {{- end}}

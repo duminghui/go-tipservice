@@ -76,7 +76,7 @@ func main() {
 		log.Fatalf("Opening Discord connection error:%s", err)
 	}
 
-	log.Info("Discord Bot is now running...")
+	log.Info("Pie Bot is now running...")
 
 	go discordStopHelper()
 	for _, p := range coinPresenters {
