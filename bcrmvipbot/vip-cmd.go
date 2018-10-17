@@ -12,7 +12,7 @@ import (
 
 func registerSymbolVipCmds() {
 	registerSymbolCmd("vipHelp", true, false, true, cmdVipHelpHandler)
-	registerSymbolCmd("vip", true, false, true, cmdVipHandler)
+	// registerSymbolCmd("vip", true, false, true, cmdVipHandler)
 	registerSymbolCmd("vipRoles", true, false, true, cmdVipRolesHandler)
 	registerSymbolCmd("vipRolePoints", false, true, true, cmdVipRolePointsHandler)
 	registerSymbolCmd("vipChannels", false, true, true, cmdVipChannelsHandler)

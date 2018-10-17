@@ -238,7 +238,7 @@ func (p *guildSymbolPresenter) cmdPieHelperHandler(parts *msgParts) {
 	minTxFee, _ := amount.FromFloat64(coinConfig.Withdraw.TxFee)
 	txFeePercent := coinConfig.Withdraw.TxFeePercent
 	isVipOn := false
-	if p.coinInfo.VipGuildID == parts.guild.ID {
+	if p.coinInfo.VipGuildID != "" {
 		isVipOn = true
 	}
 	tmplValue := &tmplValueMap{

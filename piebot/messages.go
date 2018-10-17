@@ -140,13 +140,13 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		log.Errorf("No Coin Infos for:[%s]", sbl)
 		return
 	}
-	isInGuild := false
-	if coinInfo.VipGuildID == guild.ID {
-		isInGuild = true
+	isVIPOn := false
+	if coinInfo.VipGuildID != "" {
+		isVIPOn = true
 	}
 	cmd := strings.Replace(cntParts[0], string(pfx), "", 1)
 	if cmdInfo, ok := cmdInfoMap[cmd]; ok {
-		if cmdInfo.guildLimit && !isInGuild {
+		if cmdInfo.guildLimit && !isVIPOn {
 			return
 		}
 		gcc := sccm[sbl]
