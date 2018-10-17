@@ -26,13 +26,16 @@ func reactionAddEventHandler(s *discordgo.Session, r *discordgo.MessageReactionA
 	if err != nil {
 		return
 	}
-	guild, err := guild(s, channel.GuildID)
-	if err != nil {
-		return
-	}
-	member, err := member(s, guild.ID, userID)
-	if member.User.Bot {
-		return
+
+	if channel.Type != discordgo.ChannelTypeDM {
+		guild, err := guild(s, channel.GuildID)
+		if err != nil {
+			return
+		}
+		member, err := member(s, guild.ID, userID)
+		if member.User.Bot {
+			return
+		}
 	}
 
 	emojiName := r.Emoji.Name
