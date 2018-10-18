@@ -146,7 +146,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 	cmd := strings.Replace(cntParts[0], string(pfx), "", 1)
 	if cmdInfo, ok := cmdInfoMap[cmd]; ok {
-		if cmdInfo.guildLimit && !isVIPOn {
+		if cmdInfo.guildLimit && isVIPOn {
 			return
 		}
 		gcc := sccm[sbl]
