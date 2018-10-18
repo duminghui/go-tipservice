@@ -59,6 +59,7 @@ func registerSymbolCmd(name string, channelLimit, managerCmd, guildLimit bool, h
 		name:         name,
 		channelLimit: channelLimit,
 		managerCmd:   managerCmd,
+		guildLimit:   guildLimit,
 		handler:      handler,
 	}
 	cmdInfoMap[name] = cmdInfo
