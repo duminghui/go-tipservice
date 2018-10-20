@@ -13,11 +13,96 @@ import (
 func registerSymbolVipCmds() {
 	registerSymbolCmd("vipHelp", true, false, true, cmdVipHelpHandler)
 	registerSymbolCmd("vip", true, false, true, cmdVipHandler)
+	registerSymbolCmd("vipTop", true, false, true, cmdVipTopHandler)
 	registerSymbolCmd("vipRoles", true, false, true, cmdVipRolesHandler)
 	registerSymbolCmd("vipRolePoints", false, true, true, cmdVipRolePointsHandler)
 	registerSymbolCmd("vipChannels", false, true, true, cmdVipChannelsHandler)
 	registerSymbolCmd("vipChannelPoints", false, true, true, cmdVipChannelPointsHandler)
 	registerSymbolCmd("vipPoints", false, true, true, cmdVipPointsHandler)
+	registerSymbolCmd("vipEmoji", false, true, true, cmdVipEmojiHandler)
+}
+
+var cmdVipTopHandler = (*guildSymbolPresenter).cmdVipTopHandler
+
+func (p *guildSymbolPresenter) cmdVipTopHandler(parts *msgParts) {
+	var err error
+	num := int64(0)
+	if len(parts.contents) == 0 {
+		num = 0
+	} else {
+		num, err = strconv.ParseInt(parts.contents[0], 10, 32)
+		if err != nil {
+			num = 0
+		}
+	}
+	start := int(num - 1)
+	if start < 0 {
+		start = 0
+	}
+	size := 10
+	userPointsList, err := p.dbSymbol.VipUserPointsList(start, size)
+	embedFields := embedFields(len(userPointsList))
+	end := start + 1
+	desc := ""
+	if len(userPointsList) == 0 {
+		desc = "No VIP Peoples"
+	} else {
+		for i, userPoints := range userPointsList {
+			member, err := member(parts.s, parts.guild.ID, userPoints.UserID)
+			if err != nil {
+				continue
+			}
+			roleName := userVipRoleName(parts.s, parts.guild.ID, userPoints)
+			fieldTitle := fmt.Sprintf("#%d %s", start+i+1, member.User.Username)
+			fieldContent := fmt.Sprintf("Points: %d | VIP Role: @%s", userPoints.Points, roleName)
+			embedFields = append(embedFields, mef(fieldTitle, fieldContent, false))
+		}
+		end = start + len(userPointsList)
+	}
+	title := fmt.Sprintf("%s VIP Leaderboard[ %d - %d ]", p.coinInfo.Name, start+1, end)
+	embedInfo := &embedInfo{
+		title: title,
+		desc:  desc,
+		color: 0x00FF00,
+	}
+	embedThumbnail := embedThumbnail(p.coinInfo.IconURL)
+	embed := embed(embedInfo, nil, embedThumbnail, nil, nil, embedFields)
+	parts.channelMessageSendEmbed(embed)
+}
+
+var cmdVipEmojiHandler = (*guildSymbolPresenter).cmdVipEmojiHandler
+
+func (p *guildSymbolPresenter) cmdVipEmojiHandler(parts *msgParts) {
+	userMention := parts.m.Author.Mention()
+	cmdPrefix := parts.prefix
+	tmplValue := &tmplValueMap{
+		"IsShowUsageHint": true,
+		"CmdName":         "vipEmoji",
+		"UserMention":     userMention,
+		"Prefix":          cmdPrefix,
+	}
+	usageMsg := msgFromTmpl("vipEmojiUsage", tmplValue)
+	if len(parts.contents) == 0 {
+		parts.channelMessageSend(usageMsg)
+		return
+	}
+	id, name := emojiFromContent(parts.contents[0])
+	if id == "" || name == "" {
+		parts.channelMessageSend(usageMsg)
+		return
+	}
+	_, err := p.dbSymbol.VipEmojiChange(id, name)
+	if err != nil {
+		parts.channelMessageSend("Save VIP Emoji failed")
+		return
+	}
+	readVipEmojiFromDB()
+	emoji := &discordgo.Emoji{
+		ID:   vipEmoji.ID,
+		Name: vipEmoji.Name,
+	}
+	successMsg := fmt.Sprintf("Now VIP Emoji is <:%s>", emoji.APIName())
+	parts.channelMessageSend(successMsg)
 }
 
 var cmdVipHelpHandler = (*guildSymbolPresenter).cmdVipHelpHandler
@@ -103,24 +188,20 @@ func (p *guildSymbolPresenter) cmdVipRolesHandler(parts *msgParts) {
 }
 
 func (p *guildSymbolPresenter) vipRolePointsListEmbed(s *discordgo.Session, guildID string) *discordgo.MessageEmbed {
-	rolePointList, err := p.dbSymbol.VipRolePointsList()
+	readVipRolePointsFromDB()
 	embed := new(discordgo.MessageEmbed)
 	embed.Title = "Role's Points"
 	embed.Color = 0x00FF00
 	coinInfo := p.coinInfo
 	embed.Author = embedAuthor(coinInfo.Name, coinInfo.Website, "")
 	embed.Thumbnail = embedThumbnail(coinInfo.IconURL)
-	if err != nil {
-		embed.Description = "Bot Error"
-		return embed
-	}
-	rolePointCount := len(rolePointList)
+	rolePointCount := len(vipRolePointses)
 	if rolePointCount == 0 {
 		embed.Description = "No Role's Points"
 		return embed
 	}
-	fields := embedFields(len(rolePointList))
-	for _, rolePoint := range rolePointList {
+	fields := embedFields(len(vipRolePointses))
+	for _, rolePoint := range vipRolePointses {
 		role, _ := role(s, guildID, rolePoint.RoleID)
 		if role == nil {
 			continue
@@ -139,24 +220,20 @@ func (p *guildSymbolPresenter) cmdVipChannelsHandler(parts *msgParts) {
 }
 
 func (p *guildSymbolPresenter) vipChannelPointsListEmbed(s *discordgo.Session) *discordgo.MessageEmbed {
-	channelPointsList, err := p.dbSymbol.VipChannelPointsList()
+	readVipChannelPointsFromDB()
 	embed := new(discordgo.MessageEmbed)
 	embed.Title = "Channel's Points"
 	embed.Color = 0x00FF00
 	coinInfo := p.coinInfo
 	embed.Author = embedAuthor(coinInfo.Name, coinInfo.Website, "")
 	embed.Thumbnail = embedThumbnail(coinInfo.IconURL)
-	if err != nil {
-		embed.Description = "Bot Error"
-		return embed
-	}
-	rolePointCount := len(channelPointsList)
-	if rolePointCount == 0 {
+	channelPointsCount := len(vipChannelPointses)
+	if channelPointsCount == 0 {
 		embed.Description = "No Channel's Points"
 		return embed
 	}
-	fields := embedFields(len(channelPointsList))
-	for _, channelPoints := range channelPointsList {
+	fields := embedFields(len(vipChannelPointses))
+	for _, channelPoints := range vipChannelPointses {
 		channel, err := channel(s, channelPoints.ChannelID)
 		if err != nil {
 			continue
@@ -275,8 +352,10 @@ func (p *guildSymbolPresenter) userPoints2embed(userPoints *db.VipUserPoints, us
 	title := fmt.Sprintf("%s's VIP Points", userName)
 	fields := embedFields(2)
 	pointsField := fmt.Sprintf("%d", showPoints)
+	userRoleName := userVipRoleName(discordSession, p.guildID, userPoints)
+	roleField := fmt.Sprintf("@%s", userRoleName)
 	fields = append(fields, mef("Points", pointsField, true))
-	fields = append(fields, mef("VIP Role", userPoints.RoleName, true))
+	fields = append(fields, mef("VIP Role", roleField, true))
 	embed := embed(&embedInfo{
 		title: title,
 		color: 0x00ff00,

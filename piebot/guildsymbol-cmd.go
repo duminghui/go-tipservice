@@ -448,10 +448,10 @@ func (p *guildSymbolPresenter) cmdPieHandler(parts *msgParts) {
 		receiversMap[index] = append(receiversMap[index], receiver.Mention())
 	}
 
-	if receiverCount > eachMsgReceiverNum {
-		sendCountMsg := msgFromTmpl("pieSendCountHint", tmplValue)
-		parts.channelMessageSend(sendCountMsg)
-	}
+	// if receiverCount > eachMsgReceiverNum {
+	sendCountMsg := msgFromTmpl("pieSendCountHint", tmplValue)
+	parts.channelMessageSend(sendCountMsg)
+	// }
 
 	for _, receivers := range receiversMap {
 		msg := msgFromTmpl("pieSuccess", tmplValueMap{
@@ -460,7 +460,8 @@ func (p *guildSymbolPresenter) cmdPieHandler(parts *msgParts) {
 			"Symbol":        sbl,
 			"Receivers":     receivers,
 			"ReceiverCount": receiverCount,
-			"ShowAllPeople": receiverCount > eachMsgReceiverNum,
+			// "ShowAllPeople": receiverCount > eachMsgReceiverNum,
+			"ShowAllPeople": true,
 		})
 		parts.channelMessageSend(msg)
 	}

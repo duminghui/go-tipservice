@@ -7,12 +7,14 @@
 {{define "vipHelpUsage" -}}
 {{.UserMention}} you can use these commands for
 {{template "vipUsage" .}}
+{{template "vipTopUsage" .}}
 {{if .IsManager -}}
 {{template "vipPointsUsage" .}}
 {{template "vipRolesUsage" .}}
 {{template "vipRolePointsUsage" .}}
 {{template "vipChannelsUsage" .}}
 {{template "vipChannelPointsUsage" .}}
+{{template "vipEmojiUsage" .}}
 {{- end}}
 {{- end}}
 
@@ -48,6 +50,18 @@
 {{define "vipPointsUsage" -}}
 {{if .IsShowUsageHint}}{{template "usage" . }}{{end -}}
 ***{{.Prefix}}vipPoints <@user> <points>***
-  add or sub user's VIP points
+  Add or sub user's VIP points
   <points> >0: add points, <0: sub <points>, =0:ignore
+{{- end}}
+
+{{define "vipEmojiUsage" -}}
+{{if .IsShowUsageHint}}{{template "usage" . }}{{end -}}
+***{{.Prefix}}vipEmoji <emoji>***
+    Config emoji that given VIP points
+{{- end}}
+
+{{define "vipTopUsage" -}}
+***{{.Prefix}}vipTop <index>***
+    Show VIP Leaderboard
+    <index> must be a number > 0
 {{- end}}

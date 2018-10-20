@@ -81,6 +81,9 @@ func main() {
 	log.Info("BCRM VIP Bot is now running...")
 
 	go discordStopHelper()
+	readVipRolePointsFromDB()
+	readVipChannelPointsFromDB()
+	readVipEmojiFromDB()
 	err = daemon.ServeSignals()
 	if err != nil {
 		log.Info("daemon terminate Error:", err)

@@ -20,6 +20,14 @@ type VipUserPointsPoints struct {
 	Points int64 `bson:"points"`
 }
 
+func (db *DBSymbol) VipUserPointsList(start, size int) ([]*VipUserPoints, error) {
+	session := mgoSession.Clone()
+	defer session.Close()
+	list := make([]*VipUserPoints, 0)
+	err := db.cVipUserPoints(session).Find(nil).Sort("-points").Skip(start).Limit(size).All(&list)
+	return list, err
+}
+
 func (db *DBSymbol) VipUserPointsRoleName(userID, roleName string) error {
 	session := mgoSession.Clone()
 	defer session.Close()
@@ -218,4 +226,43 @@ func (db *DBSymbol) VipChannelPointsByChannelID(channelID string) (*VipChannelPo
 		return nil, err
 	}
 	return channelPoints, nil
+}
+
+func (db *DBSymbol) cVipEmoji(s *mgo.Session) *mgo.Collection {
+	return s.DB(db.database).C("vip_emoji")
+}
+
+type VipEmoji struct {
+	Key  string `bson:"key,omitempty"`
+	ID   string `bson:"id,omitempty"`
+	Name string `bson:"name,omitempty"`
+}
+
+func (db *DBSymbol) VipEmojiChange(id, name string) (*VipEmoji, error) {
+	session := mgoSession.Clone()
+	defer session.Close()
+	selector := &VipEmoji{
+		Key: "1",
+	}
+	data := &VipEmoji{
+		Key:  "1",
+		ID:   id,
+		Name: name,
+	}
+	_, err := db.cVipEmoji(session).Upsert(selector, data)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func (db *DBSymbol) VipEmoji() (*VipEmoji, error) {
+	session := mgoSession.Clone()
+	defer session.Close()
+	vipEmoji := new(VipEmoji)
+	err := db.cVipEmoji(session).Find(nil).One(vipEmoji)
+	if err != nil {
+		return nil, err
+	}
+	return vipEmoji, nil
 }

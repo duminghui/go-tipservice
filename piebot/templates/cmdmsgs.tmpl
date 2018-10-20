@@ -57,7 +57,7 @@ please use command `{{.Prefix}}deposit` to get deposit address
 
 {{define "pieSuccess" -}}
 :lollipop: ~ ~ ~ ~ ~ ~ ~ ~ {{.CoinName}} Pie ~ ~ ~ ~ ~ ~ ~ ~:candy:
-{{.AmountEach}} {{.Symbol}} to{{range .Receivers}} {{.}}{{end}}{{if .ShowAllPeople}} (all {{.ReceiverCount}} peoples){{end}}
+{{.AmountEach}} {{.Symbol}} to{{range .Receivers}} {{.}}{{end}}{{if .ShowAllPeople}} (All {{.ReceiverCount}} peoples{{if .RoleName}} @{{.RoleName}}{{end}}){{end}}
 {{- end}}
 
 {{define "channelOperatorSuccess" -}}

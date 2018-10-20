@@ -31,8 +31,9 @@ func (p *guildSymbolPresenter) userPoints2embed(userPoints *db.VipUserPoints, us
 	title := fmt.Sprintf("%s's VIP Points", userName)
 	fields := embedFields(2)
 	pointsField := fmt.Sprintf("%d", showPoints)
+	roleField := fmt.Sprintf("@%s", userPoints.RoleName)
 	fields = append(fields, mef("Points", pointsField, true))
-	fields = append(fields, mef("VIP Role", userPoints.RoleName, true))
+	fields = append(fields, mef("VIP Role", roleField, true))
 	embed := embed(&embedInfo{
 		title: title,
 		color: 0x00ff00,

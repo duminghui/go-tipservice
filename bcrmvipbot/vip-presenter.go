@@ -8,15 +8,34 @@ import (
 	"github.com/duminghui/go-tipservice/db"
 )
 
+func userVipRoleName(s *discordgo.Session, guildID string, userPoints *db.VipUserPoints) string {
+	roleName := "Not VIP"
+	if len(vipRolePointses) == 0 {
+		return roleName
+	}
+
+	for _, rolePoints := range vipRolePointses {
+		role, err := role(s, guildID, rolePoints.RoleID)
+		if err != nil {
+			log.Errorf("userVipRoleName error:%s", err)
+			continue
+		}
+		if userPoints.Points < rolePoints.Points {
+			break
+		}
+		roleName = role.Name
+	}
+	return roleName
+}
+
 func setVipUserRole(s *discordgo.Session, guildID, userID string, userPoints *db.VipUserPoints) error {
-	rolePointsList, _ := dbBcrm.VipRolePointsList()
-	if len(rolePointsList) == 0 {
+	if len(vipRolePointses) == 0 {
 		return errors.New("No VipRolePointsList")
 	}
 	roleIndex := 0
 	var roleUse *discordgo.Role
 	roleExist := make([]string, 0)
-	for _, rolePoints := range rolePointsList {
+	for _, rolePoints := range vipRolePointses {
 		role, err := role(s, guildID, rolePoints.RoleID)
 		if err != nil {
 			log.Errorf("setVipUserRole role error:%s", err)
@@ -72,4 +91,40 @@ func setVipUserRole(s *discordgo.Session, guildID, userID string, userPoints *db
 		}
 	}
 	return nil
+}
+
+var vipEmoji *db.VipEmoji
+
+func readVipEmojiFromDB() {
+	emoji, err := dbBcrm.VipEmoji()
+	if err == nil {
+		vipEmoji = emoji
+	}
+}
+
+var vipChannelPointsMap map[string]*db.VipChannelPoints
+var vipChannelPointses []*db.VipChannelPoints
+
+func readVipChannelPointsFromDB() {
+	vipChannelPointsMap = make(map[string]*db.VipChannelPoints)
+	vipChannelPointses = make([]*db.VipChannelPoints, 0)
+	channelPointses, err := dbBcrm.VipChannelPointsList()
+	if err != nil {
+		return
+	}
+	vipChannelPointses = channelPointses
+	for _, channelPoints := range channelPointses {
+		vipChannelPointsMap[channelPoints.ChannelID] = channelPoints
+	}
+}
+
+var vipRolePointses []*db.VipRolePoints
+
+func readVipRolePointsFromDB() {
+	vipRolePointses = make([]*db.VipRolePoints, 0)
+	rolePointses, err := dbBcrm.VipRolePointsList()
+	if err != nil {
+		return
+	}
+	vipRolePointses = rolePointses
 }

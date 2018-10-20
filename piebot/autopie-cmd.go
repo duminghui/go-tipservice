@@ -252,7 +252,7 @@ func pieAuto2EmbedFields(s *discordgo.Session, p *db.PieAuto) []*discordgo.Messa
 		roleField = p.RoleID
 		role, err := role(s, p.GuildID, p.RoleID)
 		if err == nil {
-			roleField = role.Name
+			roleField = fmt.Sprintf("@%s", role.Name)
 		}
 	}
 	cycleTimes := fmt.Sprintf("%d", p.CycleTimes)

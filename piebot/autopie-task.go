@@ -80,6 +80,12 @@ func (r *pieAutoReceiverGenerator) Receivers() ([]*discordgo.User, error) {
 	if err != nil {
 		return nil, err
 	}
+	if r.roleID != "" {
+		_, err := role(s, guildID, r.roleID)
+		if err != nil {
+			return receivers, nil
+		}
+	}
 	guildName := guild.Name
 	gc := guildConfigs.gc(guildID)
 	excludeRoles := strings.Join(gc.ExcludeRoles, "|")
@@ -216,12 +222,17 @@ func pieSend(pieAuto *db.PieAuto) {
 		"Symbol":        symbol,
 		"ReceiverCount": receiverCount,
 	}
-	if receiverCount > eachMsgReceiverNum {
-		sendCountMsg := msgFromTmpl("pieSendCountHint", tmplValue)
-		discordSession.ChannelMessageSend(channelID, sendCountMsg)
-	}
+	sendCountMsg := msgFromTmpl("pieSendCountHint", tmplValue)
+	discordSession.ChannelMessageSend(channelID, sendCountMsg)
 
 	coinInfo := coinInfos[string(symbol)]
+	roleName := ""
+	if roleID != "" {
+		role, err := role(discordSession, guildID, roleID)
+		if err == nil {
+			roleName = role.Name
+		}
+	}
 	for _, receivers := range receiversMap {
 		msg := msgFromTmpl("pieSuccess", tmplValueMap{
 			"CoinName":      fmt.Sprintf("%s Auto", coinInfo.Name),
@@ -229,7 +240,9 @@ func pieSend(pieAuto *db.PieAuto) {
 			"Symbol":        symbol,
 			"Receivers":     receivers,
 			"ReceiverCount": receiverCount,
-			"ShowAllPeople": receiverCount > eachMsgReceiverNum,
+			// "ShowAllPeople": receiverCount > eachMsgReceiverNum,
+			"ShowAllPeople": true,
+			"RoleName":      roleName,
 		})
 		discordSession.ChannelMessageSend(channelID, msg)
 	}
