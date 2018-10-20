@@ -240,7 +240,7 @@ func pieAuto2EmbedFields(s *discordgo.Session, p *db.PieAuto) []*discordgo.Messa
 	channel, err := channel(s, p.ChannelID)
 	channelField := p.ChannelID
 	if err == nil {
-		channelField = channel.Name
+		channelField = fmt.Sprintf("#%s", channel.Name)
 	}
 	guild, err := guild(s, p.GuildID)
 	guildField := p.GuildID
