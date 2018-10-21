@@ -123,7 +123,10 @@ func (p *guildSymbolPresenter) cmdVipTopHandler(parts *msgParts) {
 	}
 	embedThumbnail := embedThumbnail(p.coinInfo.IconURL)
 	embed := embed(embedInfo, nil, embedThumbnail, nil, nil, embedFields)
-	parts.channelMessageSendEmbed(embed)
+	_, err = parts.channelMessageSendEmbed(embed)
+	if err != nil {
+		log.Errorf("VipTop Error:%s", err)
+	}
 }
 
 var cmdVipEmojiHandler = (*guildSymbolPresenter).cmdVipEmojiHandler
