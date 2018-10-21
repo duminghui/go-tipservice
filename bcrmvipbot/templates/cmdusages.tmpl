@@ -12,6 +12,7 @@
 {{template "vipPointsUsage" .}}
 {{template "vipRolesUsage" .}}
 {{template "vipRolePointsUsage" .}}
+{{template "vipRoleScanUsage" .}}
 {{template "vipChannelsUsage" .}}
 {{template "vipChannelPointsUsage" .}}
 {{template "vipEmojiUsage" .}}
@@ -64,4 +65,9 @@
 ***{{.Prefix}}vipTop <index>***
     Show VIP Leaderboard
     <index> must be a number > 0
+{{- end}}
+
+{{define "vipRoleScanUsage" -}}
+***{{.Prefix}}vipRoleScan***
+    Rescan peoples's VIP Role
 {{- end}}
