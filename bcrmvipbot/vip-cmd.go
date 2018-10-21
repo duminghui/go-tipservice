@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"strconv"
 	"strings"
@@ -103,16 +104,19 @@ func (p *guildSymbolPresenter) cmdVipTopHandler(parts *msgParts) {
 	if len(userPointsList) == 0 {
 		desc = "No VIP Peoples"
 	} else {
+		buf := new(bytes.Buffer)
 		for i, userPoints := range userPointsList {
 			member, err := member(parts.s, parts.guild.ID, userPoints.UserID)
 			if err != nil {
 				continue
 			}
 			roleName := userVipRoleName(parts.s, parts.guild.ID, userPoints)
-			fieldTitle := fmt.Sprintf("#%d %s#%s @%s", start+i+1, member.User.Username, member.User.Discriminator, roleName)
+			fieldTitle := fmt.Sprintf("**#%d %s#%s @%s Points:%d**\n", start+i+1, member.User.Username, member.User.Discriminator, roleName, userPoints.Points)
 			// fieldContent := fmt.Sprintf("Points: %d | VIP Role: @%s", userPoints.Points, roleName)
+			buf.WriteString(fieldTitle)
 			embedFields = append(embedFields, mef(fieldTitle, " x ", false))
 		}
+		desc = buf.String()
 		end = start + len(userPointsList)
 	}
 	title := fmt.Sprintf("%s VIP Leaderboard[ %d - %d ]", p.coinInfo.Name, start+1, end)
@@ -122,7 +126,7 @@ func (p *guildSymbolPresenter) cmdVipTopHandler(parts *msgParts) {
 		color: 0x00FF00,
 	}
 	embedThumbnail := embedThumbnail(p.coinInfo.IconURL)
-	embed := embed(embedInfo, nil, embedThumbnail, nil, nil, embedFields)
+	embed := embed(embedInfo, nil, embedThumbnail, nil, nil, nil)
 	_, err = parts.channelMessageSendEmbed(embed)
 	if err != nil {
 		log.Errorf("VipTop Error:%s", err)
