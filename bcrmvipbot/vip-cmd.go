@@ -109,7 +109,7 @@ func (p *guildSymbolPresenter) cmdVipTopHandler(parts *msgParts) {
 				continue
 			}
 			roleName := userVipRoleName(parts.s, parts.guild.ID, userPoints)
-			fieldTitle := fmt.Sprintf("#%d %s#%s @%s Points:%d", start+i+1, member.User.Username, member.User.Discriminator, roleName, userPoints.Points)
+			fieldTitle := fmt.Sprintf("#%d %s#%s @%s", start+i+1, member.User.Username, member.User.Discriminator, roleName)
 			// fieldContent := fmt.Sprintf("Points: %d | VIP Role: @%s", userPoints.Points, roleName)
 			embedFields = append(embedFields, mef(fieldTitle, "  ", false))
 		}
