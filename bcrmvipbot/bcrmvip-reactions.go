@@ -85,7 +85,7 @@ func reactionAddEventHandler(s *discordgo.Session, r *discordgo.MessageReactionA
 	if err != nil {
 		return
 	}
-	err = setVipUserRole(s, guildID, msgAuthor.ID, userPoints)
+	err = setVipUserRole(s, guildID, userPoints)
 	if err != nil {
 		return
 	}
@@ -155,7 +155,7 @@ func reactionRemoveEventHandler(s *discordgo.Session, r *discordgo.MessageReacti
 	if err != nil {
 		return
 	}
-	err = setVipUserRole(s, guildID, msgAuthor.ID, userPoints)
+	err = setVipUserRole(s, guildID, userPoints)
 	if err != nil {
 		return
 	}

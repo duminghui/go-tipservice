@@ -16,10 +16,66 @@ func registerSymbolVipCmds() {
 	registerSymbolCmd("vipTop", true, false, true, cmdVipTopHandler)
 	registerSymbolCmd("vipRoles", true, false, true, cmdVipRolesHandler)
 	registerSymbolCmd("vipRolePoints", false, true, true, cmdVipRolePointsHandler)
+	registerSymbolCmd("vipRoleScan", false, true, true, cmdVipRoleScanHandler)
 	registerSymbolCmd("vipChannels", false, true, true, cmdVipChannelsHandler)
 	registerSymbolCmd("vipChannelPoints", false, true, true, cmdVipChannelPointsHandler)
 	registerSymbolCmd("vipPoints", false, true, true, cmdVipPointsHandler)
 	registerSymbolCmd("vipEmoji", false, true, true, cmdVipEmojiHandler)
+}
+
+var cmdVipRoleScanHandler = (*guildSymbolPresenter).cmdVipRoleScanHandler
+
+func (p *guildSymbolPresenter) cmdVipRoleScanHandler(parts *msgParts) {
+	count, err := p.dbSymbol.VipUserPointsCount()
+	if err != nil {
+		parts.channelMessageSend("Bot Error")
+		return
+	}
+	if count == 0 {
+		parts.channelMessageSend("No User have VIP Points")
+		return
+	}
+	start := 0
+	size := 10
+	msgID := ""
+	msgTmpl := "%s VIP role scan will to process %d peoples, processed %d peoples"
+	for {
+		userPointsList, err := p.dbSymbol.VipUserPointsList(start, size)
+		if err != nil {
+			parts.channelMessageSend("Bot Error")
+			return
+		}
+		userPointsListLen := len(userPointsList)
+		if userPointsListLen == 0 {
+			return
+		}
+		isErr := false
+		for _, userPoints := range userPointsList {
+			err := setVipUserRole(parts.s, parts.guild.ID, userPoints)
+			if err != nil {
+				isErr = true
+				break
+			}
+		}
+		if isErr {
+			parts.channelMessageSend("Don't have config VIP role points")
+			return
+		}
+
+		start += len(userPointsList)
+		msgContent := fmt.Sprintf(msgTmpl, parts.m.Author.Mention(), count, start)
+		if msgID == "" {
+			msg, err := parts.channelMessageSend(msgContent)
+			if err == nil {
+				msgID = msg.ID
+			}
+		} else {
+			_, err = parts.s.ChannelMessageEdit(parts.channel.ID, msgID, msgContent)
+			if err != nil {
+				log.Infof("[%s]VipRoleScan Error:%s", p.symbol, err)
+			}
+		}
+	}
 }
 
 var cmdVipTopHandler = (*guildSymbolPresenter).cmdVipTopHandler
@@ -340,7 +396,7 @@ func (p *guildSymbolPresenter) cmdVipPointsHandler(parts *msgParts) {
 		log.Info(err)
 		return
 	}
-	setVipUserRole(parts.s, parts.guild.ID, userID, userPoints)
+	setVipUserRole(parts.s, parts.guild.ID, userPoints)
 	embed := p.userPoints2embed(userPoints, userName)
 	parts.channelMessageSendComplex("", embed)
 }

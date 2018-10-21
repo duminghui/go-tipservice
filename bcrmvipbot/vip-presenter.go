@@ -28,7 +28,7 @@ func userVipRoleName(s *discordgo.Session, guildID string, userPoints *db.VipUse
 	return roleName
 }
 
-func setVipUserRole(s *discordgo.Session, guildID, userID string, userPoints *db.VipUserPoints) error {
+func setVipUserRole(s *discordgo.Session, guildID string, userPoints *db.VipUserPoints) error {
 	if len(vipRolePointses) == 0 {
 		return errors.New("No VipRolePointsList")
 	}
@@ -52,6 +52,7 @@ func setVipUserRole(s *discordgo.Session, guildID, userID string, userPoints *db
 		roleName = roleUse.Name
 	}
 	userPoints.RoleName = roleName
+	userID := userPoints.UserID
 	dbBcrm.VipUserPointsRoleName(userID, roleName)
 	member, err := member(s, guildID, userID)
 	if err != nil {

@@ -20,6 +20,16 @@ type VipUserPointsPoints struct {
 	Points int64 `bson:"points"`
 }
 
+func (db *DBSymbol) VipUserPointsCount() (int, error) {
+	session := mgoSession.Clone()
+	defer session.Close()
+	count, err := db.cVipUserPoints(session).Count()
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 func (db *DBSymbol) VipUserPointsList(start, size int) ([]*VipUserPoints, error) {
 	session := mgoSession.Clone()
 	defer session.Close()
